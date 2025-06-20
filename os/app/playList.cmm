@@ -1,1 +1,16 @@
 #include "playList.hmm"
+#include "mp3Files.hmm"
+
+
+char[][] playList = array(50); // 最大曲数は仮に50曲
+int listSize = 0;              // リスト内の現在曲数を保持する
+int cursNum = 0;               // カーソルで選択した曲のインデクスを管理
+
+// プレイリストに曲を追加する．
+public void addFile() {
+    if (listSize >= playList.length) return;
+    for (int i = 0, i < mp3FilesGetNum(); i++) {
+        //パスをプレイリストに追加する．
+        playList[listSize++] = mp3FilesGetPath(i);
+    }
+}
