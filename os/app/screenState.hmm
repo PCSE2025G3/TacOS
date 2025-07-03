@@ -2,7 +2,7 @@
  * TacOS Source Code
  *    Tokuyama kousen Advanced educational Computer.
  *
- * Copyright (C) 2020 by
+ * Copyright (C) 2025 by
  *                      Dept. of Computer Science and Electronic Engineering,
  *                      Tokuyama College of Technology, JAPAN
  *
@@ -16,18 +16,18 @@
  * も行わない．また，本ソースコードの利用により直接的または間接的に生じたいかな
  * る損害に関しても，その責任を負わない．
  *
+ * This code was procuded by Computer Science and Electronic Engineering, CE2.
+ */
+
+ /*
+ * screenState.hmm : 画面ごとの静的情報を保持する．
+ *
+ * 2025.06.27 : 新規作成
  *
  */
 
-/*
- * shellProc.hmm : MP3 プレーヤのメインプロセス
- *
- * 2020.09.07 : 新規作成
- *
- */
 
-#define HOME_STATE 0
-#define MUSIC_STATE 1
-#define NUM_STATES 2
-
-public void shellMain();
+public void initScreens();
+public char[] getScreenTitle(int state);
+public char[][] getScreenMenuItems(int state);
+public int getScreenNumItems(int state);
