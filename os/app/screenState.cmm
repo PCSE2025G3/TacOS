@@ -1,8 +1,3 @@
-#include <fs.hmm>
-#include <util.hmm>
-
-#define HOME_STATE 0
-#define MUSIC_STATE 1
 #define NUM_STATES 2
 
 // 各画面のタイトル
