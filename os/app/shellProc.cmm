@@ -34,6 +34,7 @@
 #include "spi.hmm"
 #include "mp3Files.hmm"
 #include "shellProc.hmm"
+#include "screenState.hmm"
 
 //-----------------------------------------------------------------------------
 // スイッチの読み取り
@@ -100,6 +101,28 @@ void asta(int y) {
   putCh('*');
 }
 
+//画面を表示する関数
+void showScreen(int state, int cursorPos) {
+    cls();
+    locateXY(0, 0);
+    putStr(getScreenTitle(state));
+
+    int numItems = getScreenNumItems(state);
+    char[][] menuItems = getScreenMenuItems(state);
+
+    for (int i = 0; i < numItems; i=i+1) {
+        locateXY(1, i + 1);
+
+        if (i == cursorPos) {
+            putStr("-> ");
+        } else {
+            putStr("   ");
+        }
+
+        putStr(menuItems[i]);
+    }
+}
+
 //-----------------------------------------------------------------------------
 // MP3 プレーヤのメインプロセス
 //-----------------------------------------------------------------------------
@@ -108,6 +131,38 @@ public void shellMain() {
   spiResetLcd();                                    // sleepを使用するので
   spiResetMp3();                                    //   プロセスが実行する
   mp3FilesInit();                                   // ファイル一覧を作る
+  initScreens();
+  /* ここに画面遷移を書いていく．起動 → ホーム  - → 曲選択            - → 曲再生
+   *                                      |→ プレイリスト操作  → 」 
+   *
+   * 画面情報は，screenState.cmm から大枠の情報をもらってくる．動的な情報は別途渡すことによって完成させる．
+  */
+  int state = 0;
+  int cursorPos = 0;
+  showScreen(state,cursorPos);
+  for (;;) {
+    int sw = readSw();
+    int num = swToNum(sw);
+
+    if (num == 1) {  // SW1 = 上
+        cursorPos = cursorPos - 1;
+        if (cursorPos < 0) {
+            cursorPos = getScreenNumItems(state) - 1;
+        }
+        showScreen(state,cursorPos);
+    }
+    else if (num == 5) {  // SW5 = 下
+        cursorPos = cursorPos + 1;
+        if (cursorPos >= getScreenNumItems(state)) {
+            cursorPos = 0;  // 下端→上端ループ
+        }
+        showScreen(state,cursorPos);
+    }
+
+    sleep(10);  // 負荷軽減，10ms待つ
+  }
+
+  /* デモコードをコメントアウト
   demoScreen();                                     // 画面を初期化
   for (;;) {
     int sw = readSw();
@@ -125,4 +180,5 @@ public void shellMain() {
     }
     sleep(10);                                      // 10ms に一度
   }
+  */
 }
