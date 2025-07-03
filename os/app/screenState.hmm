@@ -30,4 +30,5 @@
 public void initScreens();
 public char[] getScreenTitle(int state);
 public char[][] getScreenMenuItems(int state);
+public void setScreenMenuItems(int state, char[][] items, int count);
 public int getScreenNumItems(int state);
