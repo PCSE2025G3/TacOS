@@ -1,0 +1,39 @@
+#include "lcd.hmm"
+
+#define HOME_STATE 0
+#define NUM_STATES 1
+
+// 各画面のタイトル
+char[][] screenTitles = {
+    "HOME"
+};
+
+// 各画面のメニュー項目（stateごとにメニューの文字列配列を持つ）
+char[][][] screenMenuItems = {
+    { "1: MUSIC", "2: PLAYLIST" }  // HOME_STATE のメニュー
+};
+
+// 各画面のメニュー項目数
+int[] screenNumItems = {
+    2  // HOME_STATE
+};
+
+// 初期化処理（今回は不要）
+public void initScreens() {
+    // この構成では動的初期化不要
+}
+
+// 各画面のタイトルを取得
+public char[] getScreenTitle(int state) {
+    return screenTitles[state];
+}
+
+// 各画面のメニューリストを取得
+public char[][] getScreenMenuItems(int state) {
+    return screenMenuItems[state];
+}
+
+// 各画面の項目数を取得
+public int getScreenNumItems(int state) {
+    return screenNumItems[state];
+}
