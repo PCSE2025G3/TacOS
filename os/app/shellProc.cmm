@@ -35,6 +35,7 @@
 #include "mp3Files.hmm"
 #include "shellProc.hmm"
 #include "screenState.hmm"
+#include "mm.hmm"
 
 //-----------------------------------------------------------------------------
 // スイッチの読み取り
@@ -50,7 +51,12 @@
 
 #define HOME_STATE 0
 #define MUSIC_STATE 1
-#define NUM_STATES 2
+#define MUSIC_INF 2
+#define NUM_STATES 3
+#define MAX_LIST 5
+#define NAME_LEN 16
+
+
 
 int sw0 = 0x00;                                     // 前回の状態(デバウンス前)
 int sw1 = 0x00;                                     // 前回の状態(デバウンス後)
@@ -85,7 +91,7 @@ int swToNum(int sw) {
 //-----------------------------------------------------------------------------
 // 画面表示
 //-----------------------------------------------------------------------------
-void demoScreen() {
+/*void demoScreen() {
   cls();                                            // LCDをクリアする
   locateXY(0,0); putStr("MP3 Player demo");
   for (int i=1; i<=5; i=i+1) {                      // スイッチ1〜5に付いて
@@ -103,7 +109,8 @@ void asta(int y) {
   demoScreen();
   locateXY(0, y+1);
   putCh('*');
-}
+}*/
+  
 
 //画面を表示する関数
 void showScreen(int state, int cursorPos) {
@@ -132,18 +139,19 @@ void showScreen(int state, int cursorPos) {
 //-----------------------------------------------------------------------------
 // ここからプロセスの実行が始まる
 public void shellMain() {
-  spiResetLcd();                                    // sleepを使用するので
-  spiResetMp3();                                    //   プロセスが実行する
-  mp3FilesInit();                                   // ファイル一覧を作る
+  spiResetLcd();  // sleepを使用するので
+  spiResetMp3();  //   プロセスが実行する
+  mp3FilesInit();  // ファイル一覧を作る
   initScreens();
-  /* ここに画面遷移を書いていく．起動 → ホーム  - → 曲選択            - → 曲再生
-   *                                      |→ プレイリスト操作  → 」 
-   *
+
+  /* 以下に画面遷移を書いていく．
    * 画面情報は，screenState.cmm から大枠の情報をもらってくる．動的な情報は別途渡すことによって完成させる．
   */
+
   int state = 0;
   int cursorPos = 0;
   showScreen(state,cursorPos);
+
   for (;;) {
     int sw = readSw();
     int num = swToNum(sw);
@@ -163,46 +171,60 @@ public void shellMain() {
         showScreen(state,cursorPos);
     }
     else if (num == 3) { // SW3 = 決定
-      if (state == 0) {
-          if(cursorPos+1 == 1) { // 曲リストに飛ぶ
-            int i = 0;
-            char[][]musicList;
-            while (i < 5) {
-              char[] fname = mp3FilesGetName(i + 1);  // 関数は1-originなので i+1
-              strCpy(musicList[i], fname);  // 1行ずつコピー
-              i = i + 1;
+      if (state == HOME_STATE) {
+        if(cursorPos+1 == 1) {
+          char[][] musicList = malloc(MAX_LIST * 4);
+          int i = 0;
+          while (i < MAX_LIST) {
+            musicList[i] = malloc(NAME_LEN);
+            char[] fname = mp3FilesGetName(i + 1);
+            if (fname != null) {
+              strCpy(musicList[i], fname);
+            } else {
+              musicList[i][0] = '\0';
             }
-
-            // MUSIC_STATE のメニューを更新（state, メニュー内容, 件数）
-            setScreenMenuItems(MUSIC_STATE, musicList, i);
-
-            state = MUSIC_STATE;
-            cursorPos = 0;
-            showScreen(state, cursorPos);
+            i = i + 1;
           }
+          setScreenMenuItems(MUSIC_STATE, musicList, i);
+          state = MUSIC_STATE;
+          cursorPos = 0;
+          showScreen(state, cursorPos);
+        }
+      }
+      else if (state == MUSIC_STATE){
+        char[] selectedTitle = malloc(NAME_LEN);
+        char[] fname = mp3FilesGetName(cursorPos + 1);
+        if (fname != null){
+          strCpy(selectedTitle, fname);
+          setScreenTitle(MUSIC_INF, selectedTitle);
+          state = MUSIC_INF;
+          cursorPos = 0;
+          showScreen(state, cursorPos);
+        }
+      }
+      else if (state == MUSIC_INF) {
+        if (cursorPos == 0) {  // PLAY 選択
+          char[] path = mp3FilesGetPath(cursorPos + 1);  // 曲パス取得
+          if (path != null) play(path);
+        }
+        else if (cursorPos == 1) {  // PAUSE 選択
+          stop();
+        }
+      }
+    }
+    else if (num == 2) { //SW2 = 戻る
+      if(state == MUSIC_STATE){
+        state = HOME_STATE;
+        cursorPos = 0;
+        showScreen(state, cursorPos);
+      }
+      else if (state == MUSIC_INF) {
+        state = MUSIC_STATE;
+        cursorPos = 0;
+        showScreen(state, cursorPos);
       }
     }
 
     sleep(10);  // 負荷軽減，10ms待つ
   }
-
-  /* デモコードをコメントアウト
-  demoScreen();                                     // 画面を初期化
-  for (;;) {
-    int sw = readSw();
-    int num = swToNum(sw);
-    if (num==6) {                                   // 6 番のスイッチが押された
-      dbgPutStr("stop\n");
-      demoScreen();                                 // 画面を初期化
-      stop();
-    } else if (num>0 && mp3FilesGetName(num)!=null) { // ファイルと対応するボタン
-      demoScreen();                                 // 画面を初期化
-      asta(num);                                    // 再生中の曲に印を表示
-      play(mp3FilesGetPath(num));                   // 再生開始
-      dbgPutStr(mp3FilesGetPath(num));
-      dbgPutStr("\n");
-    }
-    sleep(10);                                      // 10ms に一度
-  }
-  */
 }
