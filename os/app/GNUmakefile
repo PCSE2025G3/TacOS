@@ -25,5 +25,4 @@
 #
 
 OBJS= spi.o font.o lcd.o mp3Proc.o shellProc.o appUtil.o mp3Files.o screenState.o
-
 include ../Makefile.rul

@@ -32,3 +32,4 @@ public char[] getScreenTitle(int state);
 public char[][] getScreenMenuItems(int state);
 public void setScreenMenuItems(int state, char[][] items, int count);
 public int getScreenNumItems(int state);
+public void setScreenTitle(int state, char[] title);

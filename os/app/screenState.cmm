@@ -1,21 +1,24 @@
-#define NUM_STATES 2
-
+#include <util.hmm>
+ 
 // 各画面のタイトル
 char[][] screenTitles = {
     "HOME",
-    "MUSIC SELECT"
+    "MUSIC SELECT",
+    ""
 };
 
 // 各画面のメニュー項目（stateごとにメニューの文字列配列を持つ）
 char[][][] screenMenuItems = {
     { "1: MUSIC", "2: PLAYLIST" },  // HOME_STATE のメニュー
-    { "", "", "", "", "" }
+    { "", "", "", "", "" },
+    { "PLAY", "PAUSE", "PREV", "NEXT"}
 };
 
 // 各画面のメニュー項目数
 int[] screenNumItems = {
-    2,  // HOME_STATE
-    5  // MUSIC_STATE
+    2,
+    5, 
+    4
 };
 
 // 初期化処理
@@ -34,15 +37,15 @@ public char[][] getScreenMenuItems(int state) {
 
 // 各画面にメニューリストを入れる
 public void setScreenMenuItems(int state, char[][] items, int count) {
-    int i = 0;
-    while (i < count) {
-        strCpy(screenMenuItems[state][i], items[i]);  // 1行ごとにコピー
-        i = i + 1;
-    }
+    screenMenuItems[state] = items;
     screenNumItems[state] = count;
 }
 
 // 各画面の項目数を取得
 public int getScreenNumItems(int state) {
     return screenNumItems[state];
+}
+
+public void setScreenTitle(int state, char[] title) {
+    screenTitles[state] = title;
 }
