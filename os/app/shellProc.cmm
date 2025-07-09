@@ -148,14 +148,16 @@ public void shellMain() {
   int state = HOME_STATE;
   int prevState = HOME_STATE;  // OPTION用：前の状態を記憶
   int cursorPos = 0;
+  int music_idx = 0;
   showScreen(state, cursorPos);
 
+  //メインプロセスのループ
   for (;;) {
     int sw = readSw();
     int num = swToNum(sw);
 
     if (num == 1) {  // SW1 = 上
-      cursorPos = cursorPos - 1;Fpre
+      cursorPos = cursorPos - 1;
       if (cursorPos < 0) {
         cursorPos = getScreenNumItems(state) - 1;
       }
@@ -193,6 +195,7 @@ public void shellMain() {
       else if (state == MUSIC_STATE) {
         char[] selectedTitle = malloc(NAME_LEN);
         char[] fname = mp3FilesGetName(cursorPos + 1);
+        music_idx = cursorPos + 1;
         if (fname != null) {
           strCpy(selectedTitle, fname);
           setScreenTitle(MUSIC_INF, selectedTitle);
@@ -204,7 +207,7 @@ public void shellMain() {
       }
       else if (state == MUSIC_INF) {
         if (cursorPos == 0) {  // PLAY 選択
-          char[] path = mp3FilesGetPath(cursorPos + 1);  // 曲パス取得
+          char[] path = mp3FilesGetPath(music_idx);  // 曲パス取得
           if (path != null) play(path);
         }
         else if (cursorPos == 1) {  // PAUSE 選択
