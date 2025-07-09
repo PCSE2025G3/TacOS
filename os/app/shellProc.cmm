@@ -52,6 +52,7 @@
 #define HOME_STATE 0
 #define MUSIC_STATE 1
 #define MUSIC_INF 2
+#define OPTION_STATE 3
 #define NUM_STATES 3
 #define MAX_LIST 5
 #define NAME_LEN 16
@@ -144,35 +145,32 @@ public void shellMain() {
   mp3FilesInit();  // ファイル一覧を作る
   initScreens();
 
-  /* 以下に画面遷移を書いていく．
-   * 画面情報は，screenState.cmm から大枠の情報をもらってくる．動的な情報は別途渡すことによって完成させる．
-  */
-
-  int state = 0;
+  int state = HOME_STATE;
+  int prevState = HOME_STATE;  // OPTION用：前の状態を記憶
   int cursorPos = 0;
-  showScreen(state,cursorPos);
+  showScreen(state, cursorPos);
 
   for (;;) {
     int sw = readSw();
     int num = swToNum(sw);
 
     if (num == 1) {  // SW1 = 上
-        cursorPos = cursorPos - 1;
-        if (cursorPos < 0) {
-            cursorPos = getScreenNumItems(state) - 1;
-        }
-        showScreen(state,cursorPos);
+      cursorPos = cursorPos - 1;Fpre
+      if (cursorPos < 0) {
+        cursorPos = getScreenNumItems(state) - 1;
+      }
+      showScreen(state, cursorPos);
     }
     else if (num == 5) {  // SW5 = 下
-        cursorPos = cursorPos + 1;
-        if (cursorPos >= getScreenNumItems(state)) {
-            cursorPos = 0;  // 下端→上端ループ
-        }
-        showScreen(state,cursorPos);
+      cursorPos = cursorPos + 1;
+      if (cursorPos >= getScreenNumItems(state)) {
+        cursorPos = 0;  // 下端→上端ループ
+      }
+      showScreen(state, cursorPos);
     }
     else if (num == 3) { // SW3 = 決定
       if (state == HOME_STATE) {
-        if(cursorPos+1 == 1) {
+        if (cursorPos + 1 == 1) {
           char[][] musicList = malloc(MAX_LIST * 4);
           int i = 0;
           while (i < MAX_LIST) {
@@ -186,17 +184,19 @@ public void shellMain() {
             i = i + 1;
           }
           setScreenMenuItems(MUSIC_STATE, musicList, i);
+          prevState = state;
           state = MUSIC_STATE;
           cursorPos = 0;
           showScreen(state, cursorPos);
         }
       }
-      else if (state == MUSIC_STATE){
+      else if (state == MUSIC_STATE) {
         char[] selectedTitle = malloc(NAME_LEN);
         char[] fname = mp3FilesGetName(cursorPos + 1);
-        if (fname != null){
+        if (fname != null) {
           strCpy(selectedTitle, fname);
           setScreenTitle(MUSIC_INF, selectedTitle);
+          prevState = state;
           state = MUSIC_INF;
           cursorPos = 0;
           showScreen(state, cursorPos);
@@ -212,8 +212,8 @@ public void shellMain() {
         }
       }
     }
-    else if (num == 2) { //SW2 = 戻る
-      if(state == MUSIC_STATE){
+    else if (num == 2) { // SW2 = 戻る
+      if (state == MUSIC_STATE) {
         state = HOME_STATE;
         cursorPos = 0;
         showScreen(state, cursorPos);
@@ -223,6 +223,16 @@ public void shellMain() {
         cursorPos = 0;
         showScreen(state, cursorPos);
       }
+    }
+    else if (num == 6) { // SW6 = OPTION 画面の出入り
+      if (state != OPTION_STATE) {
+        prevState = state;      // OPTIONに入る前の状態を記録
+        state = OPTION_STATE;   // OPTION画面へ
+      } else {
+        state = prevState;      // OPTIONから戻る
+      }
+      cursorPos = 0;
+      showScreen(state, cursorPos);
     }
 
     sleep(10);  // 負荷軽減，10ms待つ
