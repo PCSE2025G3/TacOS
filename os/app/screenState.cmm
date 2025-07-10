@@ -5,7 +5,9 @@ char[][] screenTitles = {
     "HOME",
     "MUSIC SELECT",
     "",
-    "OPTION"
+    "OPTION",
+    "BRIGHTNESS",
+    "VOLUME"
 };
 
 // 各画面のメニュー項目（stateごとにメニューの文字列配列を持つ）
@@ -13,7 +15,9 @@ char[][][] screenMenuItems = {
     { "1: MUSIC", "2: PLAYLIST" },  // ホーム画面
     { "", "", "", "", "" },  //曲選択画面
     { "PLAY", "PAUSE", "PREV", "NEXT"},  //曲再生画面
-    { "VOLUME", "BRIGHTNESS", "SLEEPTIME" }  //オプション画面
+    { "VOLUME", "BRIGHTNESS", "SLEEPTIME" },  //オプション画面
+    { "UP", "DOWN"},
+    { "UP", "DOWN"}
 };
 
 // 各画面のメニュー項目数
@@ -21,7 +25,9 @@ int[] screenNumItems = {
     2,
     5, 
     4,
-    3
+    3,
+    2,
+    2
 };
 
 // 初期化処理

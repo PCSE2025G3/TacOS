@@ -36,6 +36,8 @@
 #include "shellProc.hmm"
 #include "screenState.hmm"
 #include "mm.hmm"
+#include "option.hmm"
+
 
 //-----------------------------------------------------------------------------
 // スイッチの読み取り
@@ -53,11 +55,11 @@
 #define MUSIC_STATE 1
 #define MUSIC_INF 2
 #define OPTION_STATE 3
-#define NUM_STATES 3
+#define VOLUME_STATE 4
+#define BRIGHTNESS_STATE 5
+
 #define MAX_LIST 5
 #define NAME_LEN 16
-
-
 
 int sw0 = 0x00;                                     // 前回の状態(デバウンス前)
 int sw1 = 0x00;                                     // 前回の状態(デバウンス後)
@@ -88,30 +90,6 @@ int swToNum(int sw) {
   }
   return num;
 }
-      
-//-----------------------------------------------------------------------------
-// 画面表示
-//-----------------------------------------------------------------------------
-/*void demoScreen() {
-  cls();                                            // LCDをクリアする
-  locateXY(0,0); putStr("MP3 Player demo");
-  for (int i=1; i<=5; i=i+1) {                      // スイッチ1〜5に付いて
-    locateXY(2,i+1);
-    putCh(chr(ord('0')+i));                         // スイッチの番号
-    putStr(":");
-    char[] fname = mp3FilesGetName(i);              // 対応するファイル名
-    if (fname!=null) putStr(fname);
-  }
-  locateXY(2,7);
-  putStr("6:stop");                                 // 6番のスイッチ
-}
-
-void asta(int y) {
-  demoScreen();
-  locateXY(0, y+1);
-  putCh('*');
-}*/
-  
 
 //画面を表示する関数
 void showScreen(int state, int cursorPos) {
@@ -132,6 +110,12 @@ void showScreen(int state, int cursorPos) {
         }
 
         putStr(menuItems[i]);
+    }
+    if (state == BRIGHTNESS_STATE) {
+      showLevelBar(getContrastLevel());
+    }
+    else if (state == VOLUME_STATE) {
+      showLevelBar(getVolumeLevel());
     }
 }
 
@@ -163,6 +147,7 @@ public void shellMain() {
       }
       showScreen(state, cursorPos);
     }
+
     else if (num == 5) {  // SW5 = 下
       cursorPos = cursorPos + 1;
       if (cursorPos >= getScreenNumItems(state)) {
@@ -170,6 +155,7 @@ public void shellMain() {
       }
       showScreen(state, cursorPos);
     }
+
     else if (num == 3) { // SW3 = 決定
       if (state == HOME_STATE) {
         if (cursorPos + 1 == 1) {
@@ -214,7 +200,38 @@ public void shellMain() {
           stop();
         }
       }
+      else if (state == OPTION_STATE) {
+        if (cursorPos == 0) {  // VOLUME
+          state = VOLUME_STATE;
+          cursorPos = 0;
+          showScreen(state, cursorPos);
+        }
+        else if (cursorPos == 1) {  // BRIGHTNESS
+          state = BRIGHTNESS_STATE;
+          cursorPos = 0;
+          showScreen(state, cursorPos);
+        }
+      }
+      else if (state == VOLUME_STATE) {
+        if (cursorPos == 0) {
+          updateVolume(cursorPos);
+          showScreen(state, cursorPos);
+        } else if (cursorPos == 1) {
+          updateVolume(cursorPos);
+          showScreen(state, cursorPos);
+        }
+      }
+      else if (state == BRIGHTNESS_STATE) {
+        if (cursorPos == 0) {  // UP
+          updateBrightness(cursorPos);
+          showScreen(state, cursorPos);
+        } else if (cursorPos == 1) {  // DOWN
+          updateBrightness(cursorPos);
+          showScreen(state, cursorPos);
+        }
+      }
     }
+
     else if (num == 2) { // SW2 = 戻る
       if (state == MUSIC_STATE) {
         state = HOME_STATE;
@@ -226,17 +243,35 @@ public void shellMain() {
         cursorPos = 0;
         showScreen(state, cursorPos);
       }
-    }
-    else if (num == 6) { // SW6 = OPTION 画面の出入り
-      if (state != OPTION_STATE) {
-        prevState = state;      // OPTIONに入る前の状態を記録
-        state = OPTION_STATE;   // OPTION画面へ
-      } else {
-        state = prevState;      // OPTIONから戻る
+      else if (state == VOLUME_STATE) {
+        state = OPTION_STATE;
+        cursorPos = 0;
+        showScreen(state, cursorPos);
       }
-      cursorPos = 0;
-      showScreen(state, cursorPos);
+      else if (state == BRIGHTNESS_STATE) {
+        state = OPTION_STATE;
+        cursorPos = 0;
+        showScreen(state, cursorPos);
+      }
     }
+
+    else if (num == 6) { // SW6 = OPTION 画面の出入り
+      if (state == VOLUME_STATE || state == BRIGHTNESS_STATE) {
+        state = prevState;
+        cursorPos = 0;
+        showScreen(state, cursorPos);
+      }
+      else if (state == OPTION_STATE) {
+        state = prevState;      // OPTIONに入る前の状態を記録
+        cursorPos = 0;
+        showScreen(state, cursorPos);   // OPTION画面へ
+      } else {
+        prevState = state;
+        state = OPTION_STATE;
+        cursorPos = 0;
+        showScreen(state, cursorPos);
+    }
+  }
 
     sleep(10);  // 負荷軽減，10ms待つ
   }
