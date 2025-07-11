@@ -3,13 +3,14 @@
 #include "mm.hmm"
 
 int contrastLevel = 5;
+int volumeLevel = 5;
 
 void setContrast(int level) { //コントラスト反映
   if (level < 0) level = 0;
   if (level > 9) level = 9;
   contrastLevel = level;
 
-  int contrast = 16 + (level-5) * 3; //16がデフォルト値
+  int contrast = 16 + (level-5) * 3; //16がコントラストのデフォルト値
   if(contrast < 0) contrast = 0;
   if(contrast > 63) contrast = 63;
 
@@ -20,7 +21,7 @@ void setContrast(int level) { //コントラスト反映
   spiWriteLcdCom(cmd);
 }
 
-public void updateBrightness(int cursor) {  //コントラスト調整
+public void updateBrightness(int cursor) {  //コントラスト更新
   if (cursor == 0) {
     setContrast(contrastLevel + 1);
   } else if (cursor == 1) {
@@ -32,18 +33,16 @@ public int getContrastLevel() {  //c--ではpublic変数をincludeで使用で�
   return contrastLevel;
 }
 
-int volumeLevel = 5;
-
-void setVolume(int level) {
+void setVolume(int level) {  //音量反映
   if (level < 0) level = 0;
   if (level > 9) level = 9;
   volumeLevel = level;
 
-  int vol = 0x2020 + (9 - level) * 0x0808; //0x2020がデフォルト値。上位8bitが左チャネル、下位8bitが右チャンネル
+  int vol = 0x2020 + (9 - level) * 0x0808; //0x2020が音量のデフォルト値。上位8bitが左チャネル、下位8bitが右チャンネル
   spiWriteMp3Reg(0x0b, vol);               // SCI_VOL:0x0bが音量制御レジスタ
 }
 
-public void updateVolume(int cursor) {
+public void updateVolume(int cursor) {  //音量更新
   if (cursor == 0) {
     setVolume(volumeLevel + 1);
   } else if (cursor == 1) {

@@ -114,9 +114,6 @@ void showScreen(int state, int cursorPos) {
     if (state == BRIGHTNESS_STATE) {
       showLevelBar(getContrastLevel());
     }
-    else if (state == VOLUME_STATE) {
-      showLevelBar(getVolumeLevel());
-    }
 }
 
 //-----------------------------------------------------------------------------
