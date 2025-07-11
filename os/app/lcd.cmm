@@ -90,3 +90,21 @@ public void cls() {
     }
   }
 }
+
+// contrastLevel に応じてレベルバーを表示する関数
+public void showLevelBar(int level) {
+  if (level < 0) level = 0;
+  if (level > 9) level = 9;
+
+  locateXY(2, 4);
+  putStr("[");
+
+  for (int i = 0; i < 10; i = i + 1) {
+    if (i <= level) {
+      putStr("*");
+    } else {
+      putStr("-");
+    }
+  }
+  putStr("]");
+}
