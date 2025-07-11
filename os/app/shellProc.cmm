@@ -68,7 +68,7 @@
 
 char[][] musicList;
 char[][] playList;
-int[] prevcursor = array(10);
+int[] prevcursor = array(15);                       // カーソル情報を保持する変数
 
 int sw0 = 0x00;                                     // 前回の状態(デバウンス前)
 int sw1 = 0x00;                                     // 前回の状態(デバウンス後)
