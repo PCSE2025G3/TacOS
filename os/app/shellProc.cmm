@@ -49,15 +49,19 @@
 #define SW6 0x01
 #define SWS 0x3f                                    // スイッチのビット全部
 
+//-----------------------------------------------------------------------------
+//画面ごとの番号定義 0:ホーム　1：曲一覧　2：再生画面　3：オプション　4：プレイリスト
+//-----------------------------------------------------------------------------
 #define HOME_STATE 0
 #define MUSIC_STATE 1
 #define MUSIC_INF 2
 #define OPTION_STATE 3
-#define NUM_STATES 3
-#define MAX_LIST 5
+#define PLAYLIST_STATE 4
+
+#define MAX_LIST 6
 #define NAME_LEN 16
 
-
+char[][] musicList;
 
 int sw0 = 0x00;                                     // 前回の状態(デバウンス前)
 int sw1 = 0x00;                                     // 前回の状態(デバウンス後)
@@ -134,6 +138,35 @@ void showScreen(int state, int cursorPos) {
         putStr(menuItems[i]);
     }
 }
+//-----------------------------------------
+//曲一覧用のメモリ確保
+//-----------------------------------------
+void malloc_musiclist(int upper_idx){
+  musicList = malloc(MAX_LIST * 4);
+    int i = 0;
+    while (i < MAX_LIST) {
+      musicList[i] = malloc(NAME_LEN);
+      char[] fname = mp3FilesGetName(i + upper_idx + 1);
+      if (fname != null) {
+        strCpy(musicList[i], fname);
+      } else {
+        musicList[i][0] = '\0';
+      }
+      i = i + 1;
+    }
+}
+
+//-----------------------------------------
+//曲一覧用のメモリ解放
+//-----------------------------------------
+void free_musiclist(){
+  int i = 0;
+    while (i < MAX_LIST) {
+      free(musicList[i]);
+      i = i + 1;
+    }
+    free(musicList);
+}
 
 //-----------------------------------------------------------------------------
 // MP3 プレーヤのメインプロセス
@@ -149,53 +182,77 @@ public void shellMain() {
   int prevState = HOME_STATE;  // OPTION用：前の状態を記憶
   int cursorPos = 0;
   int music_idx = 0;
+  int list_upper = 0; //リスト表示される要素の最上のインデクスを保持する．
   showScreen(state, cursorPos);
 
   //メインプロセスのループ
   for (;;) {
     int sw = readSw();
     int num = swToNum(sw);
+    int filenum = mp3FilesGetTotalNum(); //MP3ファイルの総数
 
-    if (num == 1) {  // SW1 = 上
+   if (num == 1) {  // SW1 = 上
+    int numItems = getScreenNumItems(state);
+    if (state == MUSIC_STATE && MAX_LIST < filenum) {
+      if (cursorPos > 0) {
+        cursorPos = cursorPos - 1;
+      } else if (list_upper > 0) {
+        list_upper = list_upper - 1;
+        free_musiclist();
+        malloc_musiclist(list_upper);
+        setScreenMenuItems(MUSIC_STATE, musicList, MAX_LIST);
+      } 
+    } else {
+      // 項目数が6以下のとき：ループ処理
       cursorPos = cursorPos - 1;
       if (cursorPos < 0) {
-        cursorPos = getScreenNumItems(state) - 1;
+        cursorPos = numItems - 1;
       }
-      showScreen(state, cursorPos);
     }
+    showScreen(state, cursorPos);
+  }
     else if (num == 5) {  // SW5 = 下
-      cursorPos = cursorPos + 1;
-      if (cursorPos >= getScreenNumItems(state)) {
-        cursorPos = 0;  // 下端→上端ループ
+      int numItems = getScreenNumItems(state);
+
+      // カーソルがまだ下に動かせる
+      if (cursorPos + 1 < numItems) {
+        cursorPos = cursorPos + 1;
+      } else if (state == MUSIC_STATE) {
+        //曲選択画面で，かつ下端まで来たときの処理
+        if (cursorPos + list_upper < filenum - 1) {
+          list_upper = list_upper + 1;
+          free_musiclist();
+          malloc_musiclist(list_upper);
+          setScreenMenuItems(MUSIC_STATE, musicList, MAX_LIST);
+        }
+      }  else {
+        //下端→上端ループ
+        cursorPos = 0;
+        list_upper = 0;
       }
       showScreen(state, cursorPos);
     }
     else if (num == 3) { // SW3 = 決定
       if (state == HOME_STATE) {
+        //musicを押した場合
         if (cursorPos + 1 == 1) {
-          char[][] musicList = malloc(MAX_LIST * 4);
-          int i = 0;
-          while (i < MAX_LIST) {
-            musicList[i] = malloc(NAME_LEN);
-            char[] fname = mp3FilesGetName(i + 1);
-            if (fname != null) {
-              strCpy(musicList[i], fname);
-            } else {
-              musicList[i][0] = '\0';
-            }
-            i = i + 1;
-          }
-          setScreenMenuItems(MUSIC_STATE, musicList, i);
+          malloc_musiclist(list_upper);
+          setScreenMenuItems(MUSIC_STATE, musicList, MAX_LIST);
           prevState = state;
           state = MUSIC_STATE;
           cursorPos = 0;
           showScreen(state, cursorPos);
+        } else {
+          //PlayListを押した場合
+          cursorPos=0;
+          showScreen(PLAYLIST_STATE,cursorPos);
         }
       }
       else if (state == MUSIC_STATE) {
         char[] selectedTitle = malloc(NAME_LEN);
-        char[] fname = mp3FilesGetName(cursorPos + 1);
-        music_idx = cursorPos + 1;
+        music_idx = cursorPos + list_upper +1;
+        char[] fname = mp3FilesGetName(music_idx);
+        
         if (fname != null) {
           strCpy(selectedTitle, fname);
           setScreenTitle(MUSIC_INF, selectedTitle);

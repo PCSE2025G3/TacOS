@@ -5,23 +5,26 @@ char[][] screenTitles = {
     "HOME",
     "MUSIC SELECT",
     "",
-    "OPTION"
+    "OPTION",
+    "Playlist"
 };
 
 // 各画面のメニュー項目（stateごとにメニューの文字列配列を持つ）
 char[][][] screenMenuItems = {
     { "1: MUSIC", "2: PLAYLIST" },  // ホーム画面
-    { "", "", "", "", "" },  //曲選択画面
+    { "", "", "", "", "", ""},  //曲選択画面
     { "PLAY", "PAUSE", "PREV", "NEXT"},  //曲再生画面
-    { "VOLUME", "BRIGHTNESS", "SLEEPTIME" }  //オプション画面
+    { "VOLUME", "BRIGHTNESS", "SLEEPTIME" },  //オプション画面
+    { "", "", "", "", "", ""} //リスト表示画面
 };
 
-// 各画面のメニュー項目数
+// 各画面のメニュー項目数（！！曲数は動的なので，項目数は1画面に表示できる最大数とすること！！）
 int[] screenNumItems = {
     2,
-    5, 
+    6, 
     4,
-    3
+    3,
+    10
 };
 
 // 初期化処理
