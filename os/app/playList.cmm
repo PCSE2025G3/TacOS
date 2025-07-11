@@ -56,6 +56,23 @@ public void playListInit() {
     i = i + 1;
   }
   close(fd);
+  //リスト番号を整理して01→10で並び替える，単純なバブルソート
+  int p = 0;
+  int q = LIST_NUM - 1;
+  while (p < LIST_NUM) {
+    q = LIST_NUM - 1; //qの初期化 
+    while (q > p) {
+        if (strCmp(fnames[q - 1], fnames[q]) > 0) {
+            char [] tmp =  malloc(13); //ソートのための一時待避所
+            strCpy(tmp, fnames[q - 1]);
+            strCpy(fnames[q - 1], fnames[q]);
+            strCpy(fnames[q], tmp);
+            free(tmp);
+        }
+        q =  q - 1; // 比較要素の更新
+    }
+    p = p + 1; //確定要素の更新
+  }
 }
 
 // n 番目ファイル名を返す（1<=n && n<=LIST_NUM）
@@ -63,7 +80,7 @@ public char[] playListGetName(int n) {
   if (1<=n && n<=LIST_NUM) {
     //リストは".txt"を消して表示させる．
     char[] list_fnames = malloc(13);     // 表示用バッファの確保
-    strCpy(list_fnames, fnames[n - 1]);  // 文字列をコピーする
+    strCpy(list_fnames, fnames[n - 1]);  // list_fname に fnames[n - 1] をコピーする
     //拡張子"."が来るまで読み込む
     int idx = 0;
     while(list_fnames[idx] != '.' && list_fnames[idx] != '\0') {
