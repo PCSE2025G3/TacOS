@@ -6,6 +6,24 @@ char[][] playList = array(50); // 最大曲数は仮に50曲
 int listSize = 0;              // リスト内の現在曲数を保持する
 int cursNum = 0;               // カーソルで選択した曲のインデクスを管理
 
+char[][] fnames = array(10, 13);                     // 12345678.123
+int numFile;                                        // ファイルの個数
+
+char[] mp3Dir = "/playlist";
+char[] path = array(23);                            // /playlist/12345678.123
+
+char[] fnameToPath(char[] fname) {
+  strCpy(path, mp3Dir);
+  strCat(path, "/");
+  strCat(path, fname);
+  return path;
+}
+
+// プレイリストの一覧を表示する．
+public void showlist() {
+
+}
+
 // プレイリストに曲を追加する．
 public void addFile() {
     if (listSize >= playList.length) return;
