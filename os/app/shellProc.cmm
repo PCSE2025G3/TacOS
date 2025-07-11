@@ -67,11 +67,6 @@
 
 char[][] musicList;
 
-
-#define MAX_LIST 5
-#define NAME_LEN 16
-
-
 int sw0 = 0x00;                                     // 前回の状態(デバウンス前)
 int sw1 = 0x00;                                     // 前回の状態(デバウンス後)
 
@@ -182,25 +177,26 @@ public void shellMain() {
     int num = swToNum(sw);
     int filenum = mp3FilesGetTotalNum(); //MP3ファイルの総数
 
-   if (num == 1) {  // SW1 = 上
-    int numItems = getScreenNumItems(state);
-    if (state == MUSIC_STATE && MAX_LIST < filenum) {
+    if (num == 1) {  // SW1 = 上
+      int numItems = getScreenNumItems(state);
+
+      // カーソルがまだ上に動かせる
       if (cursorPos > 0) {
         cursorPos = cursorPos - 1;
-      } else if (list_upper > 0) {
-        list_upper = list_upper - 1;
-        free_musiclist();
-        malloc_musiclist(list_upper);
-        setScreenMenuItems(MUSIC_STATE, musicList, MAX_LIST);
-      } 
-    } else {
-      // 項目数が6以下のとき：ループ処理
-      cursorPos = cursorPos - 1;
-      if (cursorPos < 0) {
+      } else if (state == MUSIC_STATE) {
+        //曲選択画面で，かつ上端まで来たときの処理
+        if (cursorPos == 0 && list_upper > 0) {
+          list_upper = list_upper - 1;
+          free_musiclist();
+          malloc_musiclist(list_upper);
+          setScreenMenuItems(MUSIC_STATE, musicList, MAX_LIST);
+        }
+      } else {
+        // 項目数が6以下のとき：ループ処理
         cursorPos = numItems - 1;
-      }
-    showScreen(state, cursorPos);
-  }
+        }
+        showScreen(state, cursorPos);
+    }
     else if (num == 5) {  // SW5 = 下
       int numItems = getScreenNumItems(state);
 
@@ -268,8 +264,8 @@ public void shellMain() {
           cursorPos = 0;
           showScreen(state, cursorPos);
         }
-        else if (cursorPos == 1) {  // BRIGHTNESS
-          state = BRIGHTNESS_STATE;
+        else if (cursorPos == 1) {  // CONTRAST
+          state = CONTRAST_STATE;
           cursorPos = 0;
           showScreen(state, cursorPos);
         }
@@ -283,12 +279,12 @@ public void shellMain() {
           showScreen(state, cursorPos);
         }
       }
-      else if (state == BRIGHTNESS_STATE) {
+      else if (state == CONTRAST_STATE) {
         if (cursorPos == 0) {  // UP
-          updateBrightness(cursorPos);
+          updateContrast(cursorPos);
           showScreen(state, cursorPos);
         } else if (cursorPos == 1) {  // DOWN
-          updateBrightness(cursorPos);
+          updateContrast(cursorPos);
           showScreen(state, cursorPos);
         }
       }
@@ -310,7 +306,7 @@ public void shellMain() {
         cursorPos = 0;
         showScreen(state, cursorPos);
       }
-      else if (state == BRIGHTNESS_STATE) {
+      else if (state == CONTRAST_STATE) {
         state = OPTION_STATE;
         cursorPos = 0;
         showScreen(state, cursorPos);
@@ -318,7 +314,7 @@ public void shellMain() {
     }
 
     else if (num == 6) { // SW6 = OPTION 画面の出入り
-      if (state == VOLUME_STATE || state == BRIGHTNESS_STATE) {
+      if (state == VOLUME_STATE || state == CONTRAST_STATE) {
         state = prevState;
         cursorPos = 0;
         showScreen(state, cursorPos);
@@ -332,9 +328,9 @@ public void shellMain() {
         state = OPTION_STATE;
         cursorPos = 0;
         showScreen(state, cursorPos);
+      }
     }
-  }
-
+   
     sleep(10);  // 負荷軽減，10ms待つ
   }
 }
