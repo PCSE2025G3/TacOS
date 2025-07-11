@@ -1,4 +1,4 @@
-public void updateBrightness(int cursor);
+public void updateContrast(int cursor);
 public int getContrastLevel();
 public void updateVolume(int cursor);
 public int getVolumeLevel();

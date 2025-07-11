@@ -20,7 +20,7 @@ void setContrast(int level) { //コントラスト反映
   spiWriteLcdCom(cmd);
 }
 
-public void updateBrightness(int cursor) {  //コントラスト調整
+public void updateContrast(int cursor) {  //コントラスト調整
   if (cursor == 0) {
     setContrast(contrastLevel + 1);
   } else if (cursor == 1) {
