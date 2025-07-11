@@ -34,10 +34,10 @@
 
 
 //-----------------------------------------------------------------------------
-// MP3ファイルの一覧（ただし，最大1５個）
+// MP3ファイルの一覧（ただし，最大30個）
 //-----------------------------------------------------------------------------
-#define MAX_FILE 15
-// 1５つのファイル名
+#define MAX_FILE 30
+//30個のファイル名
 char[][] fnames = array(MAX_FILE, 13);                     // 12345678.123
 int numFile;                                        // ファイルの個数
 
@@ -61,6 +61,7 @@ public void mp3FilesInit() {
   int i = 0;
   while (i<MAX_FILE && (dir=readDir(fd, "MP3"))!=null) {   // 最大15つファイル名を読む
     strCpy(fnames[i], dir.name);
+    dbgPutStr("Read music\n");
     i = i + 1;
   }
   numFile = i;
@@ -83,7 +84,7 @@ public char[] mp3FilesGetPath(int n) {
   return null;
 }
 
-// MP3フォルダ内にあるファイルの総数を返す（最大15ファイルまで対応）
+// MP3フォルダ内にあるファイルの総数を返す（最大30ファイルまで対応）
 public int mp3FilesGetTotalNum() {
   return numFile;
 }
