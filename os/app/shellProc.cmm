@@ -27,7 +27,7 @@
  * $Id$
  *
  */
-#include <kernel.hmm>
+#include <kernel.hmm> //使用するヘッダー宣言
 #include <util.hmm>
 #include "lcd.hmm"
 #include "mp3Proc.hmm"
