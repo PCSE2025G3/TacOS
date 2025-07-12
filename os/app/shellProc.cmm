@@ -123,7 +123,10 @@ void showScreen(int state, int cursorPos) {
     if (state == CONTRAST_STATE) {
       showLevelBar(getContrastLevel());
     }
-}
+    else if (state == VOLUME_STATE) {
+      showLevelBar(getVolumeLevel());
+    }
+  }
 //-----------------------------------------
 //曲一覧用のメモリ確保
 //-----------------------------------------
@@ -312,6 +315,30 @@ public void shellMain() {
         }
         else if (cursorPos == 1) {  // PAUSE 選択
           stop();
+        }
+        else if (cursorPos == 2) { //NEXT選択時
+          stop();
+          int total = mp3FilesGetTotalNum();
+          music_idx = (music_idx % total) + 1;
+          char[] nextTitle = mp3FilesGetName(music_idx);
+          if (nextTitle != null) {
+            setScreenTitle(MUSIC_INF, nextTitle);
+            showScreen(state, cursorPos);
+            char[] path = mp3FilesGetPath(music_idx);
+            if(path != null) play(path);
+          }
+        }
+        else if (cursorPos == 3) {  // PREV 選択
+          stop();
+          int total = mp3FilesGetTotalNum();
+          music_idx = (music_idx + total - 2) % total + 1;
+          char[] prevTitle = mp3FilesGetName(music_idx);
+          if (prevTitle != null) {
+            setScreenTitle(MUSIC_INF, prevTitle);
+            showScreen(state, cursorPos);
+            char[] path = mp3FilesGetPath(music_idx);
+            if (path != null) play(path);
+          }
         }
       }
       else if (state == OPTION_STATE) {
