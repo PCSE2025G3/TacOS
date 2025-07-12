@@ -15,7 +15,7 @@ char[][] screenTitles = {
 char[][][] screenMenuItems = {
     { "1: MUSIC", "2: PLAYLIST" },  // ホーム画面
     { "", "", "", "", "", ""},  //曲選択画面
-    { "PLAY", "PAUSE", "PREV", "NEXT"},  //曲再生画面
+    { "PLAY", "PAUSE", "NEXT", "PREV"},  //曲再生画面
     { "VOLUME", "CONTRAST"},  //オプション画面
     { "UP", "DOWN"},
     { "UP", "DOWN"},

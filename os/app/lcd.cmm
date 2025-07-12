@@ -91,8 +91,7 @@ public void cls() {
   }
 }
 
-// contrastLevel に応じてレベルバーを表示する関数
-public void showLevelBar(int level) {
+public void showLevelBar(int level) {  //レベルバーを表示する関数
   if (level < 0) level = 0;
   if (level > 9) level = 9;
 
