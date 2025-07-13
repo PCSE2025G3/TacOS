@@ -432,6 +432,7 @@ public void shellMain() {
 
     else if (num == 2) { // SW2 = 戻る
       if (state == MUSIC_STATE) {
+        free_musiclist();
         state = HOME_STATE;
         cursorPos = prevcursor[state];
         showScreen(state, cursorPos);
@@ -452,11 +453,13 @@ public void shellMain() {
         showScreen(state, cursorPos);
       }
       else if (state == PLAYLIST_STATE) {
+        free_playlist();
         state = HOME_STATE;
         cursorPos = prevcursor[state];
         showScreen(state, cursorPos);
       }
       else if (state == PLAYLIST_SONGS) {
+        free_playlist_register();
         state = PLAYLIST_STATE;
         cursorPos = prevcursor[state];
         showScreen(state, cursorPos);
