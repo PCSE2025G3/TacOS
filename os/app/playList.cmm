@@ -28,12 +28,13 @@
 
 #define LIST_NUM 10 //プレイリストは10個で固定する
 
-char[][] playList = array(50); // 1つのプレイリストに登録できる最大曲数は仮に50曲
+char[][] playList = array(50, 13); // 1つのプレイリストに登録できる最大曲数は仮に50曲
 
 char[][] fnames = array(10, 13);                     // 12345678.123
 
 char[] playlistDir = "/playlist";
 char[] path = array(18);                            // /playlist/12345678.123
+char[] list_path = array(18); 
 
 char[] fnameToPath(char[] fname) {
   strCpy(path, playlistDir);
@@ -99,3 +100,17 @@ public char[] playListGetPath(int n) {
   }
   return null;
 }
+
+// n番目のLISTnに登録されている曲の一覧を表示
+public char[][] showPlayListSongs(int n) {
+  strCpy(list_path, playlistDir);
+  strCat(list_path, "/");
+  strCat(list_path, fnames[n-1]);
+
+  //ファイルをオープンする
+  int fp = open(list_path, WRITE_MODE);
+  if (fp < 0) {
+    panic("panic : can't open list file. The error occurred.");
+  }
+  return playList;
+} 
