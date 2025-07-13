@@ -317,6 +317,7 @@ public void shellMain() {
           stop();
         }
         else if (cursorPos == 2) { //NEXT選択時
+        int status = playing_status();
           stop();
           int total = mp3FilesGetTotalNum();
           music_idx = (music_idx % total) + 1;
@@ -325,10 +326,13 @@ public void shellMain() {
             setScreenTitle(MUSIC_INF, nextTitle);
             showScreen(state, cursorPos);
             char[] path = mp3FilesGetPath(music_idx);
-            if(path != null) play(path);
+            if (status == 1) {
+              play(path);
+            }
           }
         }
         else if (cursorPos == 3) {  // PREV 選択
+          int status = playing_status();
           stop();
           int total = mp3FilesGetTotalNum();
           music_idx = (music_idx + total - 2) % total + 1;
@@ -337,7 +341,9 @@ public void shellMain() {
             setScreenTitle(MUSIC_INF, prevTitle);
             showScreen(state, cursorPos);
             char[] path = mp3FilesGetPath(music_idx);
-            if (path != null) play(path);
+            if (status == 1) {
+              play(path);
+            }
           }
         }
       }
