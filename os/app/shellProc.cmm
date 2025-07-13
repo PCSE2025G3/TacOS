@@ -52,9 +52,9 @@
 #define SW6 0x01
 #define SWS 0x3f                                    // スイッチのビット全部
 
-//-----------------------------------------------------------------------------
-//画面ごとの番号定義 0:ホーム　1：曲一覧　2：再生画面　3：オプション　4：音量調整　5：コントラスト調整　6.プレイリスト
-//-----------------------------------------------------------------------------
+//------------------------------------------------------------------------------------------------------------------------------------------------
+//画面ごとの番号定義 0:ホーム　1：曲一覧　2：再生画面　3：オプション　4：音量調整　5：コントラスト調整　6.プレイリスト　7.プレイリストの登録曲表示
+//------------------------------------------------------------------------------------------------------------------------------------------------
 #define HOME_STATE 0
 #define MUSIC_STATE 1
 #define MUSIC_INF 2
@@ -62,12 +62,15 @@
 #define VOLUME_STATE 4
 #define CONTRAST_STATE 5
 #define PLAYLIST_STATE 6
+#define PLAYLIST_SONGS 7
+//------------------------------------------------------------------------------------------------------------------------------------------------
 
 #define MAX_LIST 6
 #define NAME_LEN 16
 
 char[][] musicList;
 char[][] playList;
+char[][] playList_register;
 int[] prevcursor = array(15);                       // カーソル情報を保持する変数
 
 int sw0 = 0x00;                                     // 前回の状態(デバウンス前)
@@ -158,7 +161,7 @@ void free_musiclist(){
 }
 
 //-----------------------------------------
-//プレイリスト覧用のメモリ確保
+//プレイリスト(list01~10)一覧用のメモリ確保
 //-----------------------------------------
 void malloc_playlist(int upper_idx){
   playList = malloc(MAX_LIST * 4);
@@ -176,7 +179,7 @@ void malloc_playlist(int upper_idx){
 }
 
 //-----------------------------------------
-//プレイリスト一覧用のメモリ解放
+//プレイリスト(list01~list10)一覧用のメモリ解放
 //-----------------------------------------
 void free_playlist(){
   int i = 0;
@@ -186,6 +189,38 @@ void free_playlist(){
     }
     free(playList);
 }
+
+//-----------------------------------------
+//プレイリスト登録曲のメモリ確保
+//-----------------------------------------
+void malloc_playlist_register(int list_idx, int upper_idx){
+  playList_register = malloc(MAX_LIST * 4);
+    int i = 0;
+    while (i < MAX_LIST) {
+      playList_register[i] = malloc(NAME_LEN);
+      char[] fname = playListSongsGetName(list_idx, i + upper_idx + 1);
+      if (fname != null) {
+        strCpy(playList_register[i], fname);
+      } else {
+        playList_register[i][0] = '\0';
+      }
+      i = i + 1;
+    }
+}
+
+//-----------------------------------------
+//プレイリスト登録曲のメモリ解放
+//-----------------------------------------
+void free_playlist_register(){
+  int i = 0;
+    while (i < MAX_LIST) {
+      free(playList_register[i]);
+      i = i + 1;
+    }
+    free(playList_register);
+}
+
+
 
 //-----------------------------------------------------------------------------
 // MP3 プレーヤのメインプロセス
@@ -377,6 +412,22 @@ public void shellMain() {
           showScreen(state, cursorPos);
         }
       }
+      else if (state == PLAYLIST_STATE) {
+        list_upper = 0;
+        int listNum = cursorPos + 1;
+        showPlayListSongs(listNum);
+        int songNum;
+        if (playListSongsGetNum(listNum) <= MAX_LIST) {
+          songNum = playListSongsGetNum(listNum);
+        } else {
+          songNum = MAX_LIST;
+        }
+        malloc_playlist_register(listNum, list_upper);
+        state = PLAYLIST_SONGS;
+        setScreenMenuItems(state, playList_register, songNum);
+        cursorPos = 0;
+        showScreen(state, cursorPos);
+      }
     }
 
     else if (num == 2) { // SW2 = 戻る
@@ -402,6 +453,11 @@ public void shellMain() {
       }
       else if (state == PLAYLIST_STATE) {
         state = HOME_STATE;
+        cursorPos = prevcursor[state];
+        showScreen(state, cursorPos);
+      }
+      else if (state == PLAYLIST_SONGS) {
+        state = PLAYLIST_STATE;
         cursorPos = prevcursor[state];
         showScreen(state, cursorPos);
       }

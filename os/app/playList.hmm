@@ -31,4 +31,6 @@
 public void playListInit();               // プレイリストの初期化
 public char[] playListGetName(int n);
 public char[] playListGetPath(int n);
-public char[][] showPlayListSongs(int n);
+public void showPlayListSongs(int n);
+public int playListSongsGetNum(int n);
+public char[] playListSongsGetName(int m, int n);
