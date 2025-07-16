@@ -27,6 +27,7 @@
 #include "mm.hmm"
 
 #define LIST_NUM 10 //プレイリストは10個で固定する
+#define MAX_LIST 50
 
 char[][] playList = array(50, 13); // 1つのプレイリストに登録できる最大曲数は仮に50曲
 
@@ -35,6 +36,8 @@ char[][] fnames = array(10, 13);                     // 12345678.123
 char[] playlistDir = "/playlist";
 char[] path = array(18);                            // /playlist/12345678.123
 char[] list_path = array(18); 
+char[] ch_buf = array(2);                           // ファイルから読み込む1文字＋終端記号
+int[] line_num = array(LIST_NUM);                  // プレイリストの登録されている曲数を保持する配列
 
 char[] fnameToPath(char[] fname) {
   strCpy(path, playlistDir);
@@ -101,16 +104,63 @@ public char[] playListGetPath(int n) {
   return null;
 }
 
-// n番目のLISTnに登録されている曲の一覧を表示
-public char[][] showPlayListSongs(int n) {
+// n番目のLISTnに登録されている曲の一覧を取得
+public void showPlayListSongs(int n) {
+
+  //プレイリストの初期化処理
+  for (int i = 0; i < LIST_NUM; i = i+1) {
+    playList[i][0] = '\0';
+  }
+
   strCpy(list_path, playlistDir);
   strCat(list_path, "/");
   strCat(list_path, fnames[n-1]);
 
-  //ファイルをオープンする
-  int fp = open(list_path, WRITE_MODE);
+  //ファイルをオープンする．
+  int fp = open(list_path, READ_MODE);
   if (fp < 0) {
     panic("panic : can't open list file. The error occurred.");
   }
-  return playList;
-} 
+  int m = 0;
+  while (read(fp, ch_buf, 1) != 0) {
+    ch_buf[1] = '\0';
+    if (ch_buf[0] == 0x0a) {
+      playList[m][strLen(playList[m])] = '\0';      // 行の最後に終端記号を入れる．
+      m = m + 1;
+    } else {
+        strCat(playList[m], ch_buf);                // １文字ずつ文字列を連結する．
+        dbgPutStr("char read\n");
+    }
+  }
+  if (playList[m][0] == '\0') {
+    line_num[n-1] = m;
+  } else {
+    playList[m][strLen(playList[m])] = '\0';       // 最後に終端記号を入れる．
+    line_num[n-1] = m + 1;                         // プレイリストに登録されている曲数を代入する．
+  }
+  if (line_num[n-1] != mp3FilesGetTotalNum() && line_num[n-1] < MAX_LIST){     // プレイリストに登録されている曲数がMP3フォルダ直下にある曲数と等しくなければ "+" アイコンを追加
+    strCat(playList[line_num[n-1]],"+");
+    line_num[n-1] = line_num[n-1] + 1;
+  }
+  close(fp);
+}                              
+
+
+//--------------------!!CAUTION!!-----------------------
+// 必ず showPlayListSongs(int n) を実行してから取得すること！
+//--------------------!!CAUTION!!-----------------------
+// LISTn に登録されている曲数を返す
+public int playListSongsGetNum(int n) {
+  return line_num[n-1];
+}
+
+//--------------------!!CAUTION!!-----------------------
+// 必ず showPlayListSongs(int n) を実行してから取得すること！
+//--------------------!!CAUTION!!-----------------------
+// m 番目のリスト内の n 番目ファイル名を返す（1<=n && n<=line_num[n-1]）
+public char[] playListSongsGetName(int m, int n) {
+  if (1<=n && n<=line_num[m-1]) {
+    return playList[n-1];
+  }
+  return null;
+}
