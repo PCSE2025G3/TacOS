@@ -149,7 +149,7 @@ public void showPlayListSongs(int n) {
 //--------------------!!CAUTION!!-----------------------
 // 必ず showPlayListSongs(int n) を実行してから取得すること！
 //--------------------!!CAUTION!!-----------------------
-// LISTn に登録されている曲数を返す
+// LISTn に登録されている曲数を返す（'+'も含む要素数である．）
 public int playListSongsGetNum(int n) {
   return line_num[n-1];
 }
@@ -164,3 +164,13 @@ public char[] playListSongsGetName(int m, int n) {
   }
   return null;
 }
+
+//--------------------!!CAUTION!!-----------------------
+// 必ず showPlayListSongs(int n) を実行してから取得すること！
+//--------------------!!CAUTION!!-----------------------
+// 選択中プレイリスト内の全リストを返す．mp3Files.cmm に渡す配列用の取得関数
+public char[][] playListSongsNametoMp3Files() {
+  return playList;
+}
+
+// 選択中プレイリストに新たに曲を追加する

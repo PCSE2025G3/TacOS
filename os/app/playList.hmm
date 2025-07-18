@@ -34,3 +34,4 @@ public char[] playListGetPath(int n);
 public void showPlayListSongs(int n);
 public int playListSongsGetNum(int n);
 public char[] playListSongsGetName(int m, int n);
+public char[][] playListSongsNametoMp3Files();

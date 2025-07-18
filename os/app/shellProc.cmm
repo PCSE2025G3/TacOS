@@ -29,6 +29,7 @@
  */
 #include <kernel.hmm> //使用するヘッダー宣言
 #include <util.hmm>
+#include "appUtil.hmm"
 #include "lcd.hmm"
 #include "mp3Proc.hmm"
 #include "spi.hmm"
@@ -228,6 +229,7 @@ void free_playlist_register(){
 // ここからプロセスの実行が始まる
 public void shellMain() {
   spiResetLcd();  // sleepを使用するので
+  cls();
   spiResetMp3();  //   プロセスが実行する
   mp3FilesInit();  // ファイル一覧を作る
   playListInit(); // プレイリストの一覧を作る
@@ -237,7 +239,9 @@ public void shellMain() {
   int prevState = HOME_STATE;  // OPTION用：前の状態を記憶
   int cursorPos = 0;
   int music_idx = 0;
+  int total = 0;
   int list_upper = 0; //リスト表示される要素の最上のインデクスを保持する．
+  int listNum = 0; //選択されたプレイリスト番号を保持する．
 
   showScreen(state, cursorPos);
 
@@ -311,6 +315,7 @@ public void shellMain() {
       if (state == HOME_STATE) {
         //musicを押した場合
         if (cursorPos + 1 == 1) {
+          mp3FilesInit();                                         // playList で格納した fnames の影響を解消するため
           malloc_musiclist(list_upper);
           setScreenMenuItems(MUSIC_STATE, musicList, MAX_LIST);
           prevState = state;
@@ -321,9 +326,9 @@ public void shellMain() {
           //PlayListを押した場合
           cursorPos=0;
           list_upper = 0;
+          prevState = state;
           state = PLAYLIST_STATE;
           int numlist = getScreenNumItems(state);
-
           malloc_playlist(list_upper);
           setScreenMenuItems(state, playList, numlist);
           showScreen(state, cursorPos);
@@ -354,7 +359,7 @@ public void shellMain() {
         else if (cursorPos == 2) { //NEXT選択時
         int status = playing_status();
           stop();
-          int total = mp3FilesGetTotalNum();
+          total = mp3FilesGetTotalNum();
           music_idx = (music_idx % total) + 1;
           char[] nextTitle = mp3FilesGetName(music_idx);
           if (nextTitle != null) {
@@ -369,7 +374,7 @@ public void shellMain() {
         else if (cursorPos == 3) {  // PREV 選択
           int status = playing_status();
           stop();
-          int total = mp3FilesGetTotalNum();
+          total = mp3FilesGetTotalNum();
           music_idx = (music_idx + total - 2) % total + 1;
           char[] prevTitle = mp3FilesGetName(music_idx);
           if (prevTitle != null) {
@@ -413,7 +418,7 @@ public void shellMain() {
         }
       }
       else if (state == PLAYLIST_STATE) {
-        int listNum = cursorPos+  list_upper + 1;
+        listNum = cursorPos +  list_upper + 1;
         showPlayListSongs(listNum);
         int songNum;
         if (playListSongsGetNum(listNum) <= MAX_LIST) {
@@ -422,10 +427,33 @@ public void shellMain() {
           songNum = MAX_LIST;
         }
         malloc_playlist_register(listNum);
+        prevState = state;
         state = PLAYLIST_SONGS;
         setScreenMenuItems(state, playList_register, songNum);
         cursorPos = 0;
         showScreen(state, cursorPos);
+      }
+      else if (state == PLAYLIST_SONGS) {
+        if (strCmp(playListSongsGetName(listNum, cursorPos + list_upper + 1), "+") == 0) {
+          // いまのカーソル位置（cursorPos + list_upper）が "+"なら曲を追加する
+        }
+        else {
+          // 選択された曲を再生する
+          mp3FilesSetToFnames(playListSongsNametoMp3Files()); //mp3Files の fnames にプレイリストの曲を格納する
+          char[] selectedTitle = malloc(NAME_LEN);
+          music_idx = cursorPos + list_upper + 1;
+          char[] fname = playListSongsGetName(listNum, music_idx);
+          
+          if (fname != null) {
+            strCpy(selectedTitle, fname);
+            setScreenTitle(MUSIC_INF, selectedTitle);
+            prevState = state;
+            state = MUSIC_INF;
+            cursorPos = 0;
+            showScreen(state, cursorPos);
+          }
+
+        }
       }
     }
 
@@ -437,7 +465,11 @@ public void shellMain() {
         showScreen(state, cursorPos);
       }
       else if (state == MUSIC_INF) {
-        state = MUSIC_STATE;
+        if (prevState == MUSIC_STATE) {
+          state = MUSIC_STATE;
+        } else {
+          state = PLAYLIST_SONGS;
+        }
         cursorPos = prevcursor[state];
         showScreen(state, cursorPos);
       }
