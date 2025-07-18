@@ -193,12 +193,12 @@ void free_playlist(){
 //-----------------------------------------
 //プレイリスト登録曲のメモリ確保
 //-----------------------------------------
-void malloc_playlist_register(int list_idx, int upper_idx){
+void malloc_playlist_register(int list_idx){
   playList_register = malloc(MAX_LIST * 4);
     int i = 0;
     while (i < MAX_LIST) {
       playList_register[i] = malloc(NAME_LEN);
-      char[] fname = playListSongsGetName(list_idx, i + upper_idx + 1);
+      char[] fname = playListSongsGetName(list_idx, i + 1);
       if (fname != null) {
         strCpy(playList_register[i], fname);
       } else {
@@ -413,8 +413,7 @@ public void shellMain() {
         }
       }
       else if (state == PLAYLIST_STATE) {
-        list_upper = 0;
-        int listNum = cursorPos + 1;
+        int listNum = cursorPos+  list_upper + 1;
         showPlayListSongs(listNum);
         int songNum;
         if (playListSongsGetNum(listNum) <= MAX_LIST) {
@@ -422,7 +421,7 @@ public void shellMain() {
         } else {
           songNum = MAX_LIST;
         }
-        malloc_playlist_register(listNum, list_upper);
+        malloc_playlist_register(listNum);
         state = PLAYLIST_SONGS;
         setScreenMenuItems(state, playList_register, songNum);
         cursorPos = 0;
