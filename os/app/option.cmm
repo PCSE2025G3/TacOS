@@ -3,6 +3,7 @@
 #include "mm.hmm"
 
 int contrastLevel = 5;
+int volumeLevel = 5;
 
 void setContrast(int level) { //コントラスト反映
   if (level < 1) level = 1;
@@ -32,14 +33,12 @@ public int getContrastLevel() {  //c--ではpublic変数をincludeで使用で�
   return contrastLevel;
 }
 
-int volumeLevel = 5;
-
 void setVolume(int level) {
   if (level < 1) level = 1;
   if (level > 10) level = 10;
   volumeLevel = level;
 
-  int vol = 0x2020 + (10 - level) * 0x0808; //0x2020がデフォルト値。上位8bitが左チャネル、下位8bitが右チャンネル
+  int vol = 0x6060 - (level - 5) * 0x0808; //0x2020がデフォルト値。上位8bitが左チャネル、下位8bitが右チャンネル
   spiWriteMp3Reg(0x0b, vol);               // SCI_VOL:0x0bが音量制御レジスタ
 }
 
