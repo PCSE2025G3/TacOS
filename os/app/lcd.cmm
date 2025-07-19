@@ -107,3 +107,28 @@ public void showLevelBar(int level) {  //レベルバーを表示する関数
   }
   putStr("]");
 }
+
+public void showRepeatClear() {
+  locateXY(11,5);
+  putStr("     ");
+}
+
+public void showRepeatOne() {
+  locateXY(11,5);
+  putStr(">1");
+}
+
+public void showRepeatAll() {
+  locateXY(11,5);
+  putStr(">ALL");
+}
+
+public void showShuffleClear() {
+  locateXY(12,6);
+  putStr("   ");
+}
+
+public void showShuffleTrue() {
+  locateXY(12,6);
+  putStr("<->");
+}
