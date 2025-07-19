@@ -30,6 +30,8 @@
 #define MAX_LIST 50
 
 char[][] playList = array(50, 13); // 1つのプレイリストに登録できる最大曲数は仮に50曲
+char[][] mp3Files = array(50, 13);
+char[][] canAddSongs = array(50, 13);
 
 char[][] fnames = array(10, 13);                     // 12345678.123
 
@@ -149,7 +151,7 @@ public void showPlayListSongs(int n) {
 //--------------------!!CAUTION!!-----------------------
 // 必ず showPlayListSongs(int n) を実行してから取得すること！
 //--------------------!!CAUTION!!-----------------------
-// LISTn に登録されている曲数を返す
+// LISTn に登録されている曲数を返す（'+'も含む要素数である．）
 public int playListSongsGetNum(int n) {
   return line_num[n-1];
 }
@@ -163,4 +165,38 @@ public char[] playListSongsGetName(int m, int n) {
     return playList[n-1];
   }
   return null;
+}
+
+//--------------------!!CAUTION!!-----------------------
+// 必ず showPlayListSongs(int n) を実行してから取得すること！
+//--------------------!!CAUTION!!-----------------------
+// 選択中プレイリスト内の全リストを返す．mp3Files.cmm に渡す配列用の取得関数
+public char[][] playListSongsNametoMp3Files() {
+  return playList;
+}
+
+// 選択中プレイリストに新たに曲を追加する
+public void playListAddSongs(int n) {
+  // mp3Filesの fnames と一致するファイル名は新規追加曲に含まない
+  mp3Files = mp3FilesGetAllName();    //上書きしないのでポインタにアクセスする
+
+  //追加リストの初期化処理
+  for (int i = 0; i < MAX_LIST; i = i+1) {
+    canAddSongs[i][0] = '\0';
+  }
+
+  int a = 0;
+  boolean canAdd;
+  for (int p = 0; p < mp3FilesGetTotalNum(); p = p + 1) {
+    canAdd = true;
+    for (int q = 0; q < line_num[n-1]; q = q + 1 ) {
+      if (strCmp(playList[q], "+") != 0 && strCmp(playList[q], mp3Files[p]) == 0) {
+        canAdd = false;
+      }
+    }
+    if (canAdd && a < MAX_LIST) {
+      strCpy(canAddSongs[a], mp3Files[p]);
+      a = a + 1;
+    }
+  }
 }
