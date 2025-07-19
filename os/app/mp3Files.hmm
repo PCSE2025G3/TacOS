@@ -34,3 +34,4 @@ public char[] mp3FilesGetPath(int n);     // n 番目パス名を返す
 public int mp3FilesGetSize(int n);             // n 番目ファイルの長さを返す
 public int mp3FilesGetTotalNum();    // MP3フォルダ内にあるファイルの総数を返す
 public void mp3FilesSetToFnames(char[][] playListSongs); // 選択されたプレイリストのファイル名をfnamesに格納する
+public char[][] mp3FilesGetAllName();    // プレイリストの曲追加用にmp3フォルダ直下のファイル名すべてを返却する

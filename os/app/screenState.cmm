@@ -9,7 +9,8 @@ char[][] screenTitles = {
     "VOLUME",
     "CONTRAST",
     "PLAYLIST",
-    "PLAYLIST SONGS"
+    "PLAYLIST SONGS",
+    "ADD SONGS"
 };
 
 // 各画面のメニュー項目（stateごとにメニューの文字列配列を持つ）
@@ -21,6 +22,7 @@ char[][][] screenMenuItems = {
     { "UP", "DOWN"},
     { "UP", "DOWN"},
     { "", "", "", "", "", ""}, //リスト表示画面
+    { "", "", "", "", "", ""}, //曲表示画面
     { "", "", "", "", "", ""} //曲表示画面
 };
 
@@ -32,6 +34,7 @@ int[] screenNumItems = {
     2,
     2,
     2,
+    6,
     6,
     6
 };

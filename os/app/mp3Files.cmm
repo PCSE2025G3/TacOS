@@ -114,3 +114,11 @@ public void mp3FilesSetToFnames(char[][] playListSongs) {
   }
   numFile = i;
 }
+
+//--------------------!!CAUTION!!----------------------
+// mp3FilesSetToFnames で fnames を上書きしていないか確認！
+//--------------------!!CAUTION!!----------------------
+// playList の曲追加用に fnames を返却する．
+public char[][] mp3FilesGetAllName() {
+  return fnames;
+}
