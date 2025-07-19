@@ -600,7 +600,7 @@ public void shellMain() {
 
     if (playing_status() == 0 && isPlayRequested == 1) { //リピートとシャッフル再生
       if (shuffleMode == 1) { //シャッフル再生
-        int total = mp3FilesGetTotalNum();
+        total = mp3FilesGetTotalNum();
         if (shuffleIndex < total) {
           music_idx = shuffleList[shuffleIndex];
           shuffleIndex = shuffleIndex + 1;
@@ -612,18 +612,31 @@ public void shellMain() {
             play(path);
             isPlayRequested = 1;
           }
-        } else {
+        } else {  //再生する曲がなくなったら
           shuffleMode = 0;
           isPlayRequested = 0;
           showShuffleClear();
         }
-      } else { //リピート再生
-        if (repeatMode == 0) {
-          isPlayRequested = 0;
+      } else {
+        if (repeatMode == 0) { //通常再生
+          total = mp3FilesGetTotalNum();
+          if (music_idx >= total) {
+            isPlayRequested = 0;
+          } else {
+            music_idx = (music_idx % total) + 1;
+            char[] nextTitle = mp3FilesGetName(music_idx);
+            if (nextTitle != null) {
+              setScreenTitle(MUSIC_INF, nextTitle);
+              showScreen(state, cursorPos);
+              char[] path = mp3FilesGetPath(music_idx);
+              play(path);
+              isPlayRequested = 1;
+            }
+          }
         }
-        if (repeatMode == 1 || repeatMode == 2) {
-          if (repeatMode == 2) {
-            int total = mp3FilesGetTotalNum();
+        else if (repeatMode == 1 || repeatMode == 2) {  //リピート再生
+          if (repeatMode == 2) {  //リピートALL
+            total = mp3FilesGetTotalNum();
             music_idx = (music_idx % total) + 1;
           }
           char[] autoTitle = mp3FilesGetName(music_idx);
