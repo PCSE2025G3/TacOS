@@ -88,6 +88,10 @@ void trans(char[] path) {
   }
   spiFlushMp3();                            // デコーダLSIのバッファをクリアし
   close(fd);                                // ファイルをクローズ
+
+  if (syncFlag == false) {                  //通常終了した場合はPlaying=0
+    Playing = 0;
+  }
 }
 
 // mp3Main は，プロセスのメインルーチンとしてカーネルに登録しておく．
