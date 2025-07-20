@@ -77,6 +77,7 @@ char[][] playList_register;
 char[][] playList_add;
 int[] prevcursor = array(15);                       // カーソル情報を保持する変数
 int[] prevupper = array(15);                        // 画面最上のインデクスを保持する変数
+int[] addSongsIdx = array(50);
 
 int sw0 = 0x00;                                     // 前回の状態(デバウンス前)
 int sw1 = 0x00;
@@ -85,6 +86,7 @@ int repeatMode = 0;                                 //リピート管理変数
 int shuffleMode = 0;                                //シャッフル管理関数
 int [] shuffleList;                                 //シャッフルリスト
 int shuffleIndex = 0;                               //シャッフル再生中のインデックス
+int list_upper = 0;
 
 int readSw() {
   int sw = ~in(0x18) & SWS;                         // スイッチを読み正論理に変換
@@ -111,6 +113,13 @@ int swToNum(int sw) {
     num = 1;
   }
   return num;
+}
+
+//-----------------------------------------
+//プレイリスト追加する曲の"+"情報の保持
+//-----------------------------------------
+public void getAddIdxFromLcd() {
+  addSongsIdx = getAllAddIdx();
 }
 
 //画面を表示する関数
@@ -146,6 +155,18 @@ void showScreen(int state, int cursorPos) {
         showRepeatAll();
       } else if (shuffleMode == 1) {
         showShuffleTrue();
+      }
+    }
+    else if (state == PLAYLIST_ADDSONGS) {
+      getAddIdxFromLcd();
+      for (int i = 0; i < 6; i = i + 1) {  // 最大表示行
+        int idx = i + list_upper + 1;
+        if (idx >= 1 && idx <= playListAddSongsNum()) {
+          if (addSongsIdx[idx-1] == 1) {
+            locateXY(3, i + 1);  // (x=3, y=i+1)
+            putStr("+");
+          }
+        }
       }
     }
   }
@@ -213,12 +234,12 @@ void free_playlist(){
 //-----------------------------------------
 //プレイリスト登録曲のメモリ確保
 //-----------------------------------------
-void malloc_playlist_register(int list_idx){
+void malloc_playlist_register(int list_idx, int upper_idx){
   playList_register = malloc(MAX_LIST * 4);
     int i = 0;
     while (i < MAX_LIST) {
       playList_register[i] = malloc(NAME_LEN);
-      char[] fname = playListSongsGetName(list_idx, i + 1);
+      char[] fname = playListSongsGetName(list_idx, upper_idx + i + 1);
       if (fname != null) {
         strCpy(playList_register[i], fname);
       } else {
@@ -304,7 +325,6 @@ public void shellMain() {
   int cursorPos = 0;
   int music_idx = 0;
   int total = 0;
-  int list_upper = 0; //リスト表示される要素の最上のインデクスを保持する．
   int listNum = 0; //選択されたプレイリスト番号を保持する．
   int songNum = 0;
 
@@ -343,7 +363,7 @@ public void shellMain() {
         if (cursorPos == 0 && list_upper > 0) {
           list_upper = list_upper - 1;
           free_playlist_register();
-          malloc_playlist_register(list_upper);
+          malloc_playlist_register(listNum, list_upper);
           setScreenMenuItems(state, playList_register, MAX_LIST);
         }
       }else if (state == PLAYLIST_ADDSONGS && playListAddSongsNum() > 6) {
@@ -389,7 +409,7 @@ public void shellMain() {
         if (cursorPos + list_upper < playListSongsGetNum(listNum) - 1) {
           list_upper = list_upper + 1;
           free_playlist_register();
-          malloc_playlist_register(list_upper);
+          malloc_playlist_register(listNum, list_upper);
           setScreenMenuItems(state, playList_register, MAX_LIST);
         }
       } else if (state == PLAYLIST_ADDSONGS && playListAddSongsNum() > 6) {
@@ -563,12 +583,12 @@ public void shellMain() {
         } else {
           songNum = MAX_LIST;
         }
-        malloc_playlist_register(listNum);
+        list_upper = 0;
+        malloc_playlist_register(listNum, list_upper);
         prevState = state;
         state = PLAYLIST_SONGS;
         setScreenMenuItems(state, playList_register, songNum);
         cursorPos = 0;
-        list_upper = 0;
         showScreen(state, cursorPos);
       }
       else if (state == PLAYLIST_SONGS) {
@@ -582,12 +602,13 @@ public void shellMain() {
           } else {
             songNum = MAX_LIST;
           }
+          list_upper = 0;
           malloc_playlist_add(list_upper);
           prevState = state;
           state = PLAYLIST_ADDSONGS;
           setScreenMenuItems(state, playList_add, songNum);
           cursorPos = 0;
-          list_upper = 0;
+          addIdxInit();
           showScreen(state, cursorPos);
         }
         else {
@@ -605,7 +626,14 @@ public void shellMain() {
             cursorPos = 0;
             showScreen(state, cursorPos);
           }
-
+        }
+      }
+      else if (state == PLAYLIST_ADDSONGS) {
+        int idx = cursorPos + list_upper + 1;
+        if (getAddIdx(idx) == 0) {
+          showAddSongs(cursorPos, idx);
+        } else {
+          showAddSongsClear(cursorPos, idx);
         }
       }
     }
@@ -655,10 +683,20 @@ public void shellMain() {
         showScreen(state, cursorPos);
       }
       else if (state == PLAYLIST_ADDSONGS) {
+        playListRegisterSongs(listNum, addSongsIdx);
         free_playlist_add();
         state = PLAYLIST_SONGS;
         cursorPos = prevcursor[state];
         list_upper = prevupper[state];
+        free_playlist_register();
+        showPlayListSongs(listNum);
+        malloc_playlist_register(listNum, list_upper); // プレイリスト追加の変更反映
+        if (playListSongsGetNum(listNum) <= MAX_LIST) {
+          songNum = playListSongsGetNum(listNum);
+        } else {
+          songNum = MAX_LIST;
+        }
+        setScreenMenuItems(state, playList_register, songNum);
         showScreen(state, cursorPos);
       }
     }

@@ -108,7 +108,7 @@ public void mp3FilesSetToFnames(char[][] playListSongs) {
   }
 
   int i = 0;
-  while (playListSongs[i][0] != '+') {
+  while (i < MAX_FILE && playListSongs[i][0] != '\0' && playListSongs[i][0] != '+') {
     strCpy(fnames[i], playListSongs[i]);
     i = i + 1;
   }

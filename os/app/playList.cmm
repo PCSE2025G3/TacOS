@@ -34,6 +34,7 @@ char[][] mp3Files = array(50, 13);
 char[][] canAddSongs = array(50, 13);
 
 char[][] fnames = array(10, 13);                     // 12345678.123
+char[] addName = array(13);                          // 8.3 形式に従う
 
 char[] playlistDir = "/playlist";
 char[] path = array(18);                            // /playlist/12345678.123
@@ -111,7 +112,7 @@ public char[] playListGetPath(int n) {
 public void showPlayListSongs(int n) {
 
   //プレイリストの初期化処理
-  for (int i = 0; i < LIST_NUM; i = i+1) {
+  for (int i = 0; i < MAX_LIST; i = i+1) {
     playList[i][0] = '\0';
   }
 
@@ -132,7 +133,6 @@ public void showPlayListSongs(int n) {
       m = m + 1;
     } else {
         strCat(playList[m], ch_buf);                // １文字ずつ文字列を連結する．
-        dbgPutStr("char read\n");
     }
   }
   if (playList[m][0] == '\0') {
@@ -197,6 +197,8 @@ public void playListAddSongs(int n) {
     }
     if (canAdd && addNum < MAX_LIST) {
       strCpy(canAddSongs[addNum], mp3Files[p]);
+      dbgPutStr(canAddSongs[addNum]);
+      dbgPutStr("\n");
       addNum = addNum + 1;
     }
   }
@@ -219,4 +221,55 @@ public char[] playListAddSongsGetName(int n) {
     return canAddSongs[n-1];
   }
   return null;
+}
+
+// プレイリストファイルに新たな曲を末尾に登録する．
+public void playListRegisterSongs(int l, int[] addSongs) {
+
+  list_path[0] = '\0';             // パスの初期化
+  strCpy(list_path, playlistDir);
+  strCat(list_path, "/");
+  strCat(list_path, fnames[l-1]);
+  
+  // 一旦 read モードで fp を EOF まで移動させる
+  int fp = open(list_path, READ_MODE);
+  if (fp < 0) {
+    panic("panic : can't open list file READ_MODE. The error occurred.");
+  }
+
+  int len = 0;
+  char[] buf = malloc(1);
+  while (read(fp, buf, 1) > 0) {
+    len = len + 1;
+  }
+  free(buf);
+  close(fp);
+
+  // 追記モードでファイルを開き，EOF までのバイト数 len だけ fp を seek させる
+  fp = open(list_path, APPEND_MODE);
+  if (fp < 0) {
+    panic("panic : can't reopen list file in APPEND_MODE.");
+  }
+  seek(fp, 0, len);                            // fp を seek させる
+  for (int m = 0; m < playListAddSongsNum(); m = m + 1) {
+    int nowIdx = 0;
+    if (addSongs[m] == 1) {
+      addName = playListAddSongsGetName(m + 1); // 追加するファイル名を格納する
+      dbgPutStr(addName);
+      dbgPutStr("\n");
+      while (addName[nowIdx] != '\0') {
+        ch_buf[0] = addName[nowIdx];
+        ch_buf[1] = '\0';
+        if (write(fp, ch_buf, 1) < 0) {
+          panic("Error occurred. File write was not finished.\n");
+        }
+      nowIdx = nowIdx + 1;
+      }
+      ch_buf[0] = '\n';
+      if (write(fp, ch_buf, 1) < 0) {
+          panic("Error occurred. File write was not finished.\n");
+      }
+    }
+  }
+  close(fp);
 }

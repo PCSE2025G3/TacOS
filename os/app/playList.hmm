@@ -38,3 +38,4 @@ public char[][] playListSongsNametoMp3Files();
 public void playListAddSongs(int n);
 public int playListAddSongsNum();
 public char[] playListAddSongsGetName(int n);
+public void playListRegisterSongs(int m, int[] addSongs);

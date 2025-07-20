@@ -35,6 +35,9 @@
 #include "font.hmm"
 #include "lcd.hmm"
 
+#define MAX_FILE 50
+int[] addIdx = array(MAX_FILE); // 追加曲用のidx
+
 char[] locateCom = { '\xb0',   // page address
                      '\x10',   // column address Hi = 0x00
                      '\x00',   // column address Lo = 0x00
@@ -131,4 +134,31 @@ public void showShuffleClear() {
 public void showShuffleTrue() {
   locateXY(12,6);
   putStr("<->");
+}
+
+public void showAddSongs(int m, int n) {  // 第一引数　cursorPos, 第二引数 cursorPos + list_upper + 1
+  locateXY(3,m+1);
+  putStr("+");
+  addIdx[n-1] = 1;
+}
+
+public void showAddSongsClear(int m, int n) {
+  locateXY(3,m+1);
+  putStr(" ");
+  addIdx[n-1] = 0;
+}
+
+public void addIdxInit() {
+  for (int i = 0; i < MAX_FILE; i = i + 1) {
+    addIdx[i] = 0;
+  }
+}
+
+// m 番目の"+"選択状態を返す
+public int getAddIdx(int m) { // 引数 cursorPos + list_upper + 1
+  return addIdx[m-1];
+}
+
+public int[] getAllAddIdx() {
+  return addIdx;
 }
