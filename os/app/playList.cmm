@@ -40,6 +40,7 @@ char[] path = array(18);                            // /playlist/12345678.123
 char[] list_path = array(18); 
 char[] ch_buf = array(2);                           // ファイルから読み込む1文字＋終端記号
 int[] line_num = array(LIST_NUM);                  // プレイリストの登録されている曲数を保持する配列
+int addNum = 0;
 
 char[] fnameToPath(char[] fname) {
   strCpy(path, playlistDir);
@@ -185,7 +186,7 @@ public void playListAddSongs(int n) {
     canAddSongs[i][0] = '\0';
   }
 
-  int a = 0;
+  addNum = 0;
   boolean canAdd;
   for (int p = 0; p < mp3FilesGetTotalNum(); p = p + 1) {
     canAdd = true;
@@ -194,9 +195,28 @@ public void playListAddSongs(int n) {
         canAdd = false;
       }
     }
-    if (canAdd && a < MAX_LIST) {
-      strCpy(canAddSongs[a], mp3Files[p]);
-      a = a + 1;
+    if (canAdd && addNum < MAX_LIST) {
+      strCpy(canAddSongs[addNum], mp3Files[p]);
+      addNum = addNum + 1;
     }
   }
+}
+
+//--------------------!!CAUTION!!-----------------------
+// 必ずplayListAddSongs(int n) を実行してから取得すること！
+//--------------------!!CAUTION!!-----------------------
+// 追加できる曲の総数を返す
+public int playListAddSongsNum() {
+  return addNum;
+}
+
+//--------------------!!CAUTION!!-----------------------
+// 必ず playListAddSongs(int n) を実行してから取得すること！
+//--------------------!!CAUTION!!-----------------------
+// n 番目ファイル名を返す（1<=n && n<=playListAddSongsNum()）
+public char[] playListAddSongsGetName(int n) {
+  if (1<=n && n<=playListAddSongsNum()) {
+    return canAddSongs[n-1];
+  }
+  return null;
 }
