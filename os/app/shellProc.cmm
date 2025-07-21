@@ -733,7 +733,7 @@ public void shellMain() {
           showAddSongsClear(cursorPos, idx);
         }
       }
-      else if (state == PLAYLIST_DELETESONGS) {
+      else if (state == PLAYLIST_DELETESONGS && playListSongsGetNum(listNum) != 0) { // 登録曲がないときは何も行わない
         idx = cursorPos + list_upper + 1;
         if (getDelIdx(idx) == 0) {
           showDelSongs(cursorPos, idx);
@@ -880,6 +880,9 @@ public void shellMain() {
         state = PLAYLIST_SONGS;
         showPlayListSongs(listNum, true);       // PLAYLIST_SONGS に遷移するときは "+" を表示させる
         free_playlist_register();
+        if (numItems == 0) {
+          cursorPos = 0;
+        }
         malloc_playlist_register(listNum, list_upper);
         setScreenMenuItems(state, playList_register);
         showScreen(state, cursorPos);
