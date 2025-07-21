@@ -31,10 +31,12 @@
 public void playListInit();               // プレイリストの初期化
 public char[] playListGetName(int n);
 public char[] playListGetPath(int n);
-public void showPlayListSongs(int n);
+public void showPlayListSongs(int n, boolean isPlus);
 public int playListSongsGetNum(int n);
 public char[] playListSongsGetName(int m, int n);
 public char[][] playListSongsNametoMp3Files();
 public void playListAddSongs(int n);
 public int playListAddSongsNum();
 public char[] playListAddSongsGetName(int n);
+public void playListRegisterSongs(int m, int[] addSongs);
+public void playListDeleteSongs(int a, int[] delSongs);
