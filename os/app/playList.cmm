@@ -32,6 +32,7 @@
 char[][] playList = array(50, 13);                   // 1つのプレイリストに登録できる最大曲数は仮に50曲
 char[][] mp3Files = array(50, 13);
 char[][] canAddSongs = array(50, 13);
+char[][] sortSongs = array(99, 13);                  // プレイリスト内の曲順ソートのための配列確保
 
 char[][] fnames = array(10, 13);                     // 12345678.123
 char[] addName = array(13);                          // 8.3 形式に従う
@@ -43,6 +44,7 @@ char[] ch_buf = array(2);                           // ファイルから読み�
 int[] line_num = array(LIST_NUM);                  // プレイリストの登録されている曲数を保持する配列
 int addNum = 0;
 int nowIdx = 0;
+int sortIdx = 0;
 
 char[] fnameToPath(char[] fname) {
   strCpy(path, playlistDir);
@@ -302,6 +304,100 @@ public void playListDeleteSongs(int a, int[] delSongs) {
     if (delSongs[i] == 0) {
       while (playList[i][nowIdx] != '\0') {
         ch_buf[0] = playList[i][nowIdx];
+        ch_buf[1] = '\0';
+        if (write(fp, ch_buf, 1) < 0) {
+          panic("Error occurred. File write was not finished.\n");
+        }
+        nowIdx = nowIdx + 1;
+      }
+      ch_buf[0] = '\n';
+      if (write(fp, ch_buf, 1) < 0) {
+          panic("Error occurred. File write was not finished.\n");
+      }
+    }
+  }
+  ch_buf[0] = '\0';
+  if (write(fp, ch_buf, 1) < 0) {
+      panic("Error occurred. File write was not finished.\n");
+  }
+  close(fp);
+}
+
+//----------------------------------------
+// プレイリストに登録されている曲の順序変更
+//----------------------------------------
+// n 番目の曲を移動させる
+public void playListSortSongs(int m, int n) {
+  
+  sortIdx = n-1;
+  char[] insert;
+  // 曲順ソートのための配列をクリア
+  for(int i = 0; i < 99; i = i + 1) {
+    sortSongs[i][0] = '\0';
+  }
+
+  // 曲順ソートのための配列の作成．もとの曲インデクスn に対して 2 * n + 1 に格納してあげればよい．
+  int regist_idx = 0;
+  for(int i = 0; i <  playListSongsGetNum(m); i = i + 1) {
+    if (i == n-1) {
+      insert = " ** Now ** ";
+      strCpy(sortSongs[2*i], insert);
+    } else {
+      insert = "  * Ins *  ";
+      strCpy(sortSongs[2*i], insert);
+    }
+    if (i != playListSongsGetNum(m)-1) {
+      if (i == n-1) {
+        regist_idx = regist_idx + 1;
+      }
+      strCpy(sortSongs[2*i+1], playList[regist_idx]);
+    }
+    regist_idx = regist_idx + 1;
+  }
+}
+
+//--------------------!!CAUTION!!-----------------------
+// 必ず playListSortSongs(int n) を実行してから取得すること！
+//--------------------!!CAUTION!!-----------------------
+// ソート用配列の n 番目の要素を返す
+public char[] playListSortSongsGetName(int n) {
+  return sortSongs[n-1];
+}
+
+//--------------------!!CAUTION!!-----------------------
+// 必ず playListAddSongs(int n) を実行してから取得すること！
+//--------------------!!CAUTION!!-----------------------
+// n = cursorPos + list_upper + 1 で指定された位置に曲を移動させてファイルに書き込む．削除ではないので，別段ファイルを作成し直さなくてよい．
+public void playListSortSongsInsert(int m, int n) {
+
+  list_path[0] = '\0';             // パスの初期化
+  strCpy(list_path, playlistDir);
+  strCat(list_path, "/");
+  strCat(list_path, fnames[m-1]);
+
+  int fp = open(list_path, WRITE_MODE);
+  if (fp < 0) {
+    panic("panic : can't reopen list file in WRITE_MODE.");
+  }
+
+  for (int i = 0; i < 2 * playListSongsGetNum(m) - 1; i = i + 1) {
+    nowIdx = 0;
+    if(i == n-1) {                          // ソート先のインデクスかどうか
+      while(playList[sortIdx][nowIdx] != '\0') {
+        ch_buf[0] = playList[sortIdx][nowIdx];
+        ch_buf[1] = '\0';
+        if (write(fp, ch_buf, 1) < 0) {
+          panic("Error occurred. File write was not finished.\n");
+        }
+        nowIdx = nowIdx + 1;
+      }
+      ch_buf[0] = '\n';
+      if (write(fp, ch_buf, 1) < 0) {
+          panic("Error occurred. File write was not finished.\n");
+      }
+    } else if (i % 2 == 1) {
+      while(sortSongs[i][nowIdx] != '\0') {
+        ch_buf[0] = sortSongs[i][nowIdx];
         ch_buf[1] = '\0';
         if (write(fp, ch_buf, 1) < 0) {
           panic("Error occurred. File write was not finished.\n");

@@ -40,3 +40,6 @@ public int playListAddSongsNum();
 public char[] playListAddSongsGetName(int n);
 public void playListRegisterSongs(int m, int[] addSongs);
 public void playListDeleteSongs(int a, int[] delSongs);
+public void playListSortSongs(int m, int n);
+public char[] playListSortSongsGetName(int n);
+public void playListSortSongsInsert(int m, int n);
