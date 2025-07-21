@@ -29,7 +29,7 @@
 #define LIST_NUM 10 //プレイリストは10個で固定する
 #define MAX_LIST 50
 
-char[][] playList = array(50, 13); // 1つのプレイリストに登録できる最大曲数は仮に50曲
+char[][] playList = array(50, 13);                   // 1つのプレイリストに登録できる最大曲数は仮に50曲
 char[][] mp3Files = array(50, 13);
 char[][] canAddSongs = array(50, 13);
 
@@ -42,6 +42,7 @@ char[] list_path = array(18);
 char[] ch_buf = array(2);                           // ファイルから読み込む1文字＋終端記号
 int[] line_num = array(LIST_NUM);                  // プレイリストの登録されている曲数を保持する配列
 int addNum = 0;
+int nowIdx = 0;
 
 char[] fnameToPath(char[] fname) {
   strCpy(path, playlistDir);
@@ -60,7 +61,6 @@ public void playListInit() {
   int i = 0;
   while (i< LIST_NUM && (dir=readDir(fd, "TXT"))!=null) {   // 最大10つファイル名を読む
     strCpy(fnames[i], dir.name);
-    dbgPutStr("Read PlayList\n");
     i = i + 1;
   }
   close(fd);
@@ -109,7 +109,7 @@ public char[] playListGetPath(int n) {
 }
 
 // n番目のLISTnに登録されている曲の一覧を取得
-public void showPlayListSongs(int n) {
+public void showPlayListSongs(int n, boolean isPlus) {  // 第二引数：リストに "+" を含めるかどうか．true なら含めて，false なら除外する
 
   //プレイリストの初期化処理
   for (int i = 0; i < MAX_LIST; i = i+1) {
@@ -141,7 +141,7 @@ public void showPlayListSongs(int n) {
     playList[m][strLen(playList[m])] = '\0';       // 最後に終端記号を入れる．
     line_num[n-1] = m + 1;                         // プレイリストに登録されている曲数を代入する．
   }
-  if (line_num[n-1] != mp3FilesGetTotalNum() && line_num[n-1] < MAX_LIST){     // プレイリストに登録されている曲数がMP3フォルダ直下にある曲数と等しくなければ "+" アイコンを追加
+  if (line_num[n-1] != mp3FilesGetTotalNum() && line_num[n-1] < MAX_LIST && isPlus){     // プレイリストに登録されている曲数がMP3フォルダ直下にある曲数と等しくなければ "+" アイコンを追加
     strCat(playList[line_num[n-1]],"+");
     line_num[n-1] = line_num[n-1] + 1;
   }
@@ -150,7 +150,7 @@ public void showPlayListSongs(int n) {
 
 
 //--------------------!!CAUTION!!-----------------------
-// 必ず showPlayListSongs(int n) を実行してから取得すること！
+// 必ず showPlayListSongs(int n, boolean isPlus) を実行してから取得すること！
 //--------------------!!CAUTION!!-----------------------
 // LISTn に登録されている曲数を返す（'+'も含む要素数である．）
 public int playListSongsGetNum(int n) {
@@ -158,7 +158,7 @@ public int playListSongsGetNum(int n) {
 }
 
 //--------------------!!CAUTION!!-----------------------
-// 必ず showPlayListSongs(int n) を実行してから取得すること！
+// 必ず showPlayListSongs(int n, boolean isPlus) を実行してから取得すること！
 //--------------------!!CAUTION!!-----------------------
 // m 番目のリスト内の n 番目ファイル名を返す（1<=n && n<=line_num[n-1]）
 public char[] playListSongsGetName(int m, int n) {
@@ -169,7 +169,7 @@ public char[] playListSongsGetName(int m, int n) {
 }
 
 //--------------------!!CAUTION!!-----------------------
-// 必ず showPlayListSongs(int n) を実行してから取得すること！
+// 必ず showPlayListSongs(int n, boolean isPlus) を実行してから取得すること！
 //--------------------!!CAUTION!!-----------------------
 // 選択中プレイリスト内の全リストを返す．mp3Files.cmm に渡す配列用の取得関数
 public char[][] playListSongsNametoMp3Files() {
@@ -197,8 +197,6 @@ public void playListAddSongs(int n) {
     }
     if (canAdd && addNum < MAX_LIST) {
       strCpy(canAddSongs[addNum], mp3Files[p]);
-      dbgPutStr(canAddSongs[addNum]);
-      dbgPutStr("\n");
       addNum = addNum + 1;
     }
   }
@@ -252,11 +250,9 @@ public void playListRegisterSongs(int l, int[] addSongs) {
   }
   seek(fp, 0, len);                            // fp を seek させる
   for (int m = 0; m < playListAddSongsNum(); m = m + 1) {
-    int nowIdx = 0;
+    nowIdx = 0;
     if (addSongs[m] == 1) {
       addName = playListAddSongsGetName(m + 1); // 追加するファイル名を格納する
-      dbgPutStr(addName);
-      dbgPutStr("\n");
       while (addName[nowIdx] != '\0') {
         ch_buf[0] = addName[nowIdx];
         ch_buf[1] = '\0';
@@ -270,6 +266,59 @@ public void playListRegisterSongs(int l, int[] addSongs) {
           panic("Error occurred. File write was not finished.\n");
       }
     }
+  }
+  ch_buf[0] = '\0';
+  if (write(fp, ch_buf, 1) < 0) {
+      panic("Error occurred. File write was not finished.\n");
+  }
+  close(fp);
+}
+
+// プレイリスト登録曲の削除
+public void playListDeleteSongs(int a, int[] delSongs) {
+
+  list_path[0] = '\0';             // パスの初期化
+  strCpy(list_path, playlistDir);
+  strCat(list_path, "/");
+  strCat(list_path, fnames[a-1]);
+
+  int dp = remove(list_path);  // 一旦ファイルを消す
+  if (dp < 0) {
+    panic("panic : can't remove file.");
+  }
+
+  int cp = creat(list_path);   // 空のファイルを作成
+  if (cp < 0) {
+    panic("panic : can't creat file.");
+  }
+
+  // delSongs と playlist の中身を照らし合わせて WRITE_MODE で上書きすることで削除を再現する
+  int fp = open(list_path, WRITE_MODE);
+  if (fp < 0) {
+    panic("panic : can't reopen list file in WRITE_MODE.");
+  }
+  for (int i = 0; i < line_num[a-1]; i = i + 1) {
+    nowIdx = 0;
+    if (delSongs[i] == 0) {
+      while (playList[i][nowIdx] != '\0') {
+        ch_buf[0] = playList[i][nowIdx];
+        ch_buf[1] = '\0';
+        if (write(fp, ch_buf, 1) < 0) {
+          panic("Error occurred. File write was not finished.\n");
+        }
+        nowIdx = nowIdx + 1;
+      }
+      dbgPutStr(playList[i]);
+      dbgPutStr("\n");
+      ch_buf[0] = '\n';
+      if (write(fp, ch_buf, 1) < 0) {
+          panic("Error occurred. File write was not finished.\n");
+      }
+    }
+  }
+  ch_buf[0] = '\0';
+  if (write(fp, ch_buf, 1) < 0) {
+      panic("Error occurred. File write was not finished.\n");
   }
   close(fp);
 }

@@ -71,7 +71,6 @@ public void mp3FilesInit() {
   int i = 0;
   while (i<MAX_FILE && (dir=readDir(fd, "MP3"))!=null) {   // 最大15つファイル名を読む
     strCpy(fnames[i], dir.name);
-    dbgPutStr("Read music\n");
     i = i + 1;
   }
   numFile = i;
@@ -93,6 +92,7 @@ public char[] mp3FilesGetPath(int n) {
   }
   return null;
 }
+
 
 // MP3フォルダ内にあるファイルの総数を返す（最大30ファイルまで対応）
 public int mp3FilesGetTotalNum() {

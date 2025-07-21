@@ -10,7 +10,9 @@ char[][] screenTitles = {
     "CONTRAST",
     "PLAYLIST",
     "PLAYLIST SONGS",
-    "ADD SONGS"
+    "ADD SONGS",
+    "DELETE SONGS",
+    "SORT SONGS"
 };
 
 // 各画面のメニュー項目（stateごとにメニューの文字列配列を持つ）
@@ -23,20 +25,27 @@ char[][][] screenMenuItems = {
     { "UP", "DOWN"},
     { "", "", "", "", "", ""}, //リスト表示画面
     { "", "", "", "", "", ""}, //曲表示画面
-    { "", "", "", "", "", ""} //曲表示画面
+    { "", "", "", "", "", ""}, //曲表示画面
+    { "", "", "", "", "", ""},
+    { "", "", "", "", "", ""}
 };
 
-// 各画面のメニュー項目数（！！曲数は動的なので，項目数は1画面に表示できる最大数とすること！！）
+// 各画面のメニュー項目数
+//------------!!CAUTION!!--------------
+// 動的な項目数をもつ場合は「0」とすること！
+//------------!!CAUTION!!--------------
 int[] screenNumItems = {
     2,
-    6, 
+    0, 
     6,
     2,
     2,
     2,
-    6,
-    6,
-    6
+    0,
+    0,
+    0,
+    0,
+    0
 };
 
 // 初期化処理
@@ -54,9 +63,8 @@ public char[][] getScreenMenuItems(int state) {
 }
 
 // 各画面にメニューリストを入れる
-public void setScreenMenuItems(int state, char[][] items, int count) {
+public void setScreenMenuItems(int state, char[][] items) {
     screenMenuItems[state] = items;
-    screenNumItems[state] = count;
 }
 
 // 各画面の項目数を取得

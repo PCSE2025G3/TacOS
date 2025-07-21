@@ -37,6 +37,7 @@
 
 #define MAX_FILE 50
 int[] addIdx = array(MAX_FILE); // 追加曲用のidx
+int[] delIdx = array(MAX_FILE); // 削除曲用のidx
 
 char[] locateCom = { '\xb0',   // page address
                      '\x10',   // column address Hi = 0x00
@@ -161,4 +162,30 @@ public int getAddIdx(int m) { // 引数 cursorPos + list_upper + 1
 
 public int[] getAllAddIdx() {
   return addIdx;
+}
+
+public void showDelSongs(int m, int n) {
+  locateXY(3,m+1);
+  putStr("-");
+  delIdx[n-1] = 1;
+}
+
+public void showDelSongsClear(int m, int n) {
+  locateXY(3,m+1);
+  putStr(" ");
+  delIdx[n-1] = 0;
+}
+
+public void delIdxInit() {
+  for (int i = 0; i < MAX_FILE; i = i + 1) {
+    delIdx[i] = 0;
+  }
+}
+
+public int getDelIdx(int m) {
+  return delIdx[m-1];
+}
+
+public int[] getAllDelIdx() {
+  return delIdx;
 }
