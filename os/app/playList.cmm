@@ -308,8 +308,6 @@ public void playListDeleteSongs(int a, int[] delSongs) {
         }
         nowIdx = nowIdx + 1;
       }
-      dbgPutStr(playList[i]);
-      dbgPutStr("\n");
       ch_buf[0] = '\n';
       if (write(fp, ch_buf, 1) < 0) {
           panic("Error occurred. File write was not finished.\n");
