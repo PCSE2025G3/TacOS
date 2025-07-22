@@ -396,18 +396,20 @@ public void playListSortSongsInsert(int m, int n) {
           panic("Error occurred. File write was not finished.\n");
       }
     } else if (i % 2 == 1) {
-      nowIdx = 0;
-      while(sortSongs[i][nowIdx] != '\0' && sortSongs[i][0] != '\0') {
-        ch_buf[0] = sortSongs[i][nowIdx];
-        ch_buf[1] = '\0';
-        if (write(fp, ch_buf, 1) < 0) {
-          panic("Error occurred. File write was not finished.\n");
+      if (sortSongs[i][0] != '\0') {
+        nowIdx = 0;
+        while(sortSongs[i][nowIdx] != '\0') {
+          ch_buf[0] = sortSongs[i][nowIdx];
+          ch_buf[1] = '\0';
+          if (write(fp, ch_buf, 1) < 0) {
+            panic("Error occurred. File write was not finished.\n");
+          }
+          nowIdx = nowIdx + 1;
         }
-        nowIdx = nowIdx + 1;
-      }
-      ch_buf[0] = '\n';
-      if (write(fp, ch_buf, 1) < 0) {
-          panic("Error occurred. File write was not finished.\n");
+        ch_buf[0] = '\n';
+        if (write(fp, ch_buf, 1) < 0) {
+            panic("Error occurred. File write was not finished.\n");
+        }
       }
     }
   }
