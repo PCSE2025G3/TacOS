@@ -12,7 +12,8 @@ char[][] screenTitles = {
     "PLAYLIST SONGS",
     "ADD SONGS",
     "DELETE SONGS",
-    "SORT SONGS"
+    "SORT SONGS",
+    "CHOOSE INS PLACE"
 };
 
 // 各画面のメニュー項目（stateごとにメニューの文字列配列を持つ）
@@ -26,6 +27,7 @@ char[][][] screenMenuItems = {
     { "", "", "", "", "", ""}, //リスト表示画面
     { "", "", "", "", "", ""}, //曲表示画面
     { "", "", "", "", "", ""}, //曲表示画面
+    { "", "", "", "", "", ""},
     { "", "", "", "", "", ""},
     { "", "", "", "", "", ""}
 };
@@ -41,6 +43,7 @@ int[] screenNumItems = {
     2,
     2,
     2,
+    0,
     0,
     0,
     0,
