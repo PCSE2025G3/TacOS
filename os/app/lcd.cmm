@@ -58,6 +58,11 @@ public void putCh(char c) {
   spiWriteLcdDat(font(c), 8);
 }
 
+// カーソル位置に1文字表示（王冠用）
+public void putChCrown(int i) {
+  spiWriteLcdDat(fontCrown(i), 8);
+}
+
 // カーソル位置に文字列表示
 public void putStr(char[] str) {
   for (int i=0; str[i]!='\0'; i=i+1) {
@@ -188,4 +193,15 @@ public int getDelIdx(int m) {
 
 public int[] getAllDelIdx() {
   return delIdx;
+}
+
+public void showCrown(int m, int n) {
+  int idx = 0;
+  for (int i = 0; i < 4; i = i + 1) {
+    locateXY(m,n+i);
+    for (int j = 0; j < 4; j = j + 1) {
+      putChCrown(idx);
+      idx = idx + 1;
+    }
+  }
 }
