@@ -57,7 +57,7 @@
 //------------------------------------------------------------------------------------------------------------------------------------------------
 //画面ごとの番号定義 
 // 0:ホーム　1：曲一覧　2：再生画面　3：オプション　4：音量調整　5：コントラスト調整　6.プレイリスト　7.プレイリストの登録曲表示　8.プレイリストの曲追加
-// 9:プレイリストの曲削除　10:プレイリストの曲順序入れ替え　11:insert 先の選択
+// 9:プレイリストの曲削除　10:プレイリストの曲順序入れ替え　11:insert 先の選択　12:オープニング
 //------------------------------------------------------------------------------------------------------------------------------------------------
 #define HOME_STATE 0
 #define MUSIC_STATE 1
@@ -71,6 +71,7 @@
 #define PLAYLIST_DELETESONGS 9
 #define PLAYLIST_SORTSONGS 10
 #define PLAYLIST_SORTFINDINSERT 11
+#define OPENING 12
 //------------------------------------------------------------------------------------------------------------------------------------------------
 
 #define MAX_LIST 6
@@ -201,6 +202,9 @@ void showScreen(int state, int cursorPos) {
           }
         }
       }
+    }
+    else if (state == HOME_STATE) {
+      showCrown(6,4);
     }
   }
 
@@ -394,14 +398,29 @@ public void shellMain() {
   playListInit(); // プレイリストの一覧を作る
   initScreens();
 
-  int state = HOME_STATE;
+// ----------------------------------------------
+// オープニング画面の表示
+// ----------------------------------------------
+  int state = OPENING;
+  showScreen(state, -1);  // カーソルは表示しない
+  showCrown(6,2);            // 王冠の表示
+  locateXY(4,7);
+  putStr("Welcome!!");
+  sleep(2000);
+  play("/asset/opening.mp3");
+  sleep(3000);
+  locateXY(4,7);
+  putStr("Loading...");
+  sleep(6000);
+
+  state = HOME_STATE;
   int prevState = HOME_STATE;  // 前の状態を記憶
   int cursorPos = 0;
   int music_idx = 0;
   int total = 0;
   int idx = 0;
 
-  showScreen(state, cursorPos);
+  showScreen(state, cursorPos); // 初期状態
 
   //メインプロセスのループ
   for (;;) {

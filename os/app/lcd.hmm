@@ -47,3 +47,5 @@ public void showDelSongsClear(int m, int n);
 public void delIdxInit();
 public int getDelIdx(int m);
 public int[] getAllDelIdx();
+public void putChCrown(int i);
+public void showCrown(int m, int n);
