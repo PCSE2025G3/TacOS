@@ -395,7 +395,7 @@ void free_playlist_sort(){
 
 
 //-----------------------------------------
-//シャッフル用リスト
+//シャッフルリスト
 //-----------------------------------------
 void generateshuffleList(int total) {
   shuffleList = malloc(total * 2);
@@ -409,6 +409,16 @@ void generateshuffleList(int total) {
     shuffleList[i + j] = tmp;
   }
   shuffleIndex = 0;
+}
+
+//-----------------------------------------
+//シャッフルリストのメモリ開放
+//-----------------------------------------
+void free_shuffleList() {
+  if (shuffleList != null) {
+    free(shuffleList);
+    shuffleList = null;
+  }
 }
 
 //-----------------------------------------------------------------------------
@@ -658,6 +668,10 @@ public void shellMain() {
       }
       else if (state == MUSIC_INF) {
         if (cursorPos == 0) {  // PLAY 選択
+          if (shuffleMode == 1 && shuffleIndex < mp3FilesGetTotalNum()) { //シャッフル→プレイ→NEXTが押されたときのため
+            music_idx = shuffleList[shuffleIndex];
+            shuffleIndex = shuffleIndex + 1;
+          }
           char[] path = mp3FilesGetPath(music_idx);  // 曲パス取得
           if (path != null) {
             timerStop();
@@ -680,7 +694,19 @@ public void shellMain() {
           timerStop();
           lastShownSec = -1;
           total = mp3FilesGetTotalNum();
-          if (repeatMode != 1) {
+
+        if (shuffleMode == 1) {
+            if (shuffleIndex < total) {
+              music_idx = shuffleList[shuffleIndex];
+              shuffleIndex = shuffleIndex + 1;
+            } else {
+              shuffleMode = 0;
+              showShuffleClear();
+              free_shuffleList();
+              isPlayRequested = 0;
+              continue;
+            }
+          } else if (repeatMode != 1) {
             music_idx = (music_idx % total) + 1;
           }
           char[] nextTitle = mp3FilesGetName(music_idx);
@@ -735,12 +761,12 @@ public void shellMain() {
             showShuffleTrue();
             generateshuffleList(mp3FilesGetTotalNum());
             shuffleIndex = 0;
-
             repeatMode = 0; //シャッフル時リピートは無効化
             showRepeatClear();
           }else {
             shuffleMode = 0;
             showShuffleClear();
+            free_shuffleList();
           }
         }
       }
@@ -1032,6 +1058,7 @@ public void shellMain() {
           shuffleMode = 0;
           isPlayRequested = 0;
           showShuffleClear();
+          free_shuffleList();
         }
       } else {
         if (repeatMode == 0) { //通常再生
