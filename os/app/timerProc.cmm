@@ -50,7 +50,7 @@ int link;                                   // メッセージ通信用のリン
 boolean syncFlag = false;                   // クライアントが同期待ちである
 boolean showFlag = true;
 int timer_sec = 0;
-int timer_msec = 0;
+int timer_offset = 0;
 
 //-------------------------------------
 // クライアント（ShellProc）が呼び出す
@@ -71,18 +71,11 @@ public void timerStart() {
 void countTimer() {
   send(link,OK);                            // クライアントに成功を通知
   timer_sec = 0;
-  timer_msec = 0;
+  spiWriteMp3Reg(0x04, 0x00);
+  spiWriteMp3Reg(0x04, 0x00); 
   while(true) {
-    sleep(90);
-    int i = 0 ;
-    for (int n = 0; n < 12670; n = n + 1) { // 処理自体に意味はないが，1秒のカウントを精密にするための遅延
-      i = i + n;
-    }
-    timer_msec = timer_msec + 100;
-    if (timer_msec >= 1000) {
-      timer_sec = timer_sec + 1;
-      timer_msec = 0;
-    }
+    sleep(200);
+    timer_sec = spiReadMp3Reg(0x4);
     if (syncFlag) break;
   }
 }

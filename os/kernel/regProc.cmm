@@ -95,7 +95,7 @@ public void regProc()  {
   schProc(_AtoA(shellMem));
 
   // 時間計測のメインプロセス
-  newProc(addrof(timerMain),3,0,EI|KERN,_AtoA(timerMem), timerFds);
+  newProc(addrof(timerMain),2,0,EI|KERN,_AtoA(timerMem), timerFds);
   schProc(_AtoA(timerMem));
 
   // MP3 データ転送プロセス
