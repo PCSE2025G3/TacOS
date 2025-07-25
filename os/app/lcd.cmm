@@ -38,6 +38,8 @@
 #define MAX_FILE 50
 int[] addIdx = array(MAX_FILE); // 追加曲用のidx
 int[] delIdx = array(MAX_FILE); // 削除曲用のidx
+char[] chm = array(3);
+char[] chs = array(3);
 
 char[] locateCom = { '\xb0',   // page address
                      '\x10',   // column address Hi = 0x00
@@ -204,4 +206,22 @@ public void showCrown(int m, int n) {
       idx = idx + 1;
     }
   }
+}
+
+// 引数 n（単位はs）を受け取って画面に経過秒数を表示する
+public void showTime(int n) {
+  int m = n / 60;
+  int s = n % 60;
+
+  chm[0] = chr(0x30 + m / 10);
+  chm[1] = chr(0x30 + m % 10);
+  chs[0] = chr(0x30 + s / 10);
+  chs[1] = chr(0x30 + s % 10);
+
+  locateXY(10,1);
+  putCh(chm[0]);
+  putCh(chm[1]);
+  putCh(':');
+  putCh(chs[0]);
+  putCh(chs[1]);
 }
