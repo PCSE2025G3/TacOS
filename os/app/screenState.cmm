@@ -83,13 +83,3 @@ public int getScreenNumItems(int state) {
 public void setScreenTitle(int state, char[] title) {
     screenTitles[state] = title;
 }
-
-// 現在のステートをセットする
-public void setCurrentState(int state) {
-  currentState = state;
-}
-
-// 現在のステートを取得する
-public int getCurrentState() {
-  return currentState;
-}

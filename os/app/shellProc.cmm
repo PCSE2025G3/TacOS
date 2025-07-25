@@ -83,8 +83,11 @@ char[][] playList;
 char[][] playList_register;
 char[][] playList_add;
 char[][] playList_sort;
+char[] tmp = array(18);
+char[] nowpath = array(18);
 int[] prevcursor = array(15);                       // カーソル情報を保持する変数
 int[] prevupper = array(15);                        // 画面最上のインデクスを保持する変数
+int[] prevState = array(15);                        // 画面遷移の順番を保持する変数．
 int[] addSongsIdx = array(50);
 int[] delSongsIdx = array(50);
 
@@ -99,6 +102,7 @@ int list_upper = 0;
 int listNum = 0;                                    // 選択されたプレイリスト番号の保持
 int elementNum = 0;                                 // 表示する要素数の保持
 int numItems = 0;
+int stateidx = 0;                                   // 画面遷移のインデクスを保持するための変数
 
 int readSw() {
   int sw = ~in(0x18) & SWS;                         // スイッチを読み正論理に変換
@@ -128,18 +132,35 @@ int swToNum(int sw) {
 }
 
 //-----------------------------------------
-//プレイリスト追加する曲の"+"情報の保持
+// プレイリスト追加する曲の"+"情報の保持
 //-----------------------------------------
 public void getAddIdxFromLcd() {
   addSongsIdx = getAllAddIdx();
 }
 
 //-----------------------------------------
-//プレイリスト追加する曲の"-"情報の保持
+// プレイリスト追加する曲の"-"情報の保持
 //-----------------------------------------
 public void getDelIdxFromLcd() {
   delSongsIdx = getAllDelIdx();
 }
+
+//-----------------------------------------
+// 画面遷移の履歴を保存する
+//-----------------------------------------
+void saveChangeScreen(int state) {
+  stateidx = stateidx + 1;
+  prevState[stateidx] = state;
+}
+
+//-----------------------------------------
+// 画面遷移の履歴を削除する
+//-----------------------------------------
+void removeChangeScreen() {
+  prevState[stateidx] = -1;
+  stateidx = stateidx - 1;
+}
+
 
 //画面を表示する関数
 void showScreen(int state, int cursorPos) {
@@ -179,7 +200,7 @@ void showScreen(int state, int cursorPos) {
       } else if (shuffleMode == 1) {
         showShuffleTrue();
       }
-      if (isPlayRequested == 1) {
+      if (isPlayRequested == 1 && strCmp(nowpath, tmp) == 0) {
         showTime(getTimerSec());
       }
     }
@@ -443,7 +464,6 @@ public void shellMain() {
   sleep(3000);
 
   state = HOME_STATE;
-  int prevState = HOME_STATE;  // 前の状態を記憶
   int cursorPos = 0;
   int music_idx = 0;
   int total = 0;
@@ -451,7 +471,6 @@ public void shellMain() {
   int status;
   int lastShownSec = -1;
 
-  setCurrentState(state);
   showScreen(state, cursorPos); // 初期状態
 
   //メインプロセスのループ
@@ -460,7 +479,7 @@ public void shellMain() {
     int num = swToNum(sw);
     int filenum = mp3FilesGetTotalNum(); //MP3ファイルの総数
 
-    if (getCurrentState() == MUSIC_INF && isPlayRequested == 1) {
+    if (state == MUSIC_INF  && isPlayRequested == 1 && strCmp(nowpath,tmp) == 0) {
       int now = getTimerSec();
       if (now != lastShownSec) {
         showScreen(MUSIC_INF, cursorPos);  // 秒が変わったら画面を更新
@@ -604,21 +623,19 @@ public void shellMain() {
           mp3FilesInit();                                         // playList で格納した fnames の影響を解消するため
           malloc_musiclist(list_upper);
           setScreenMenuItems(MUSIC_STATE, musicList);
-          prevState = state;
+          saveChangeScreen(state);
           state = MUSIC_STATE;
-          setCurrentState(state);
           cursorPos = 0;
           showScreen(state, cursorPos);
         } else {
           //PlayListを押した場合
           cursorPos=0;
           list_upper = 0;
-          prevState = state;
+          saveChangeScreen(state);
           state = PLAYLIST_STATE;
           int numlist = getScreenNumItems(state);
           malloc_playlist(list_upper);
           setScreenMenuItems(state, playList);
-          setCurrentState(state);
           showScreen(state, cursorPos);
         }
       }
@@ -626,13 +643,15 @@ public void shellMain() {
         char[] selectedTitle = malloc(NAME_LEN);
         music_idx = cursorPos + list_upper +1;
         char[] fname = mp3FilesGetName(music_idx);
+        char[] path = mp3FilesGetPath(music_idx);  // 曲パス取得
         
-        if (fname != null) {
+        if (fname != null && path != null) {
           strCpy(selectedTitle, fname);
+          strCpy(tmp,path);
           setScreenTitle(MUSIC_INF, selectedTitle);
-          prevState = state;
+          saveChangeScreen(state);
           state = MUSIC_INF;
-          setCurrentState(state);
+
           cursorPos = 0;
           showScreen(state, cursorPos);
         }
@@ -645,6 +664,7 @@ public void shellMain() {
             lastShownSec = -1;
             play(path);
             timerStart();
+            strCpy(nowpath,path);
             isPlayRequested = 1;
           }
         }
@@ -727,13 +747,11 @@ public void shellMain() {
       else if (state == OPTION_STATE) {
         if (cursorPos == 0) {  // VOLUME
           state = VOLUME_STATE;
-          setCurrentState(state);
           cursorPos = 0;
           showScreen(state, cursorPos);
         }
         else if (cursorPos == 1) {  // CONTRAST
           state = CONTRAST_STATE;
-          setCurrentState(state);
           cursorPos = 0;
           showScreen(state, cursorPos);
         }
@@ -762,9 +780,8 @@ public void shellMain() {
         showPlayListSongs(listNum, true);
         list_upper = 0;
         malloc_playlist_register(listNum, list_upper);
-        prevState = state;
+        saveChangeScreen(state);
         state = PLAYLIST_SONGS;
-        setCurrentState(state);
         setScreenMenuItems(state, playList_register);
         cursorPos = 0;
         showScreen(state, cursorPos);
@@ -777,9 +794,8 @@ public void shellMain() {
           playListAddSongs(listNum); // 追加可能な曲のリストを作成する
           list_upper = 0;
           malloc_playlist_add(list_upper);
-          prevState = state;
+          saveChangeScreen(state);
           state = PLAYLIST_ADDSONGS;
-          setCurrentState(state);
           setScreenMenuItems(state, playList_add);
           cursorPos = 0;
           addIdxInit();
@@ -790,13 +806,14 @@ public void shellMain() {
           mp3FilesSetToFnames(playListSongsNametoMp3Files()); //mp3Files の fnames にプレイリストの曲を格納する
           char[] selectedTitle = malloc(NAME_LEN);
           music_idx = cursorPos + list_upper + 1;
-          
-          if (fname != null) {
+          char[] path = mp3FilesGetPath(music_idx);  // 曲パス取得
+
+          if (fname != null && path != null) {
             strCpy(selectedTitle, fname);
             setScreenTitle(MUSIC_INF, selectedTitle);
-            prevState = state;
+            saveChangeScreen(state);
+            strCpy(tmp,path);
             state = MUSIC_INF;
-            setCurrentState(state);
             list_upper = 0;
             cursorPos = 0;
             showScreen(state, cursorPos);
@@ -824,7 +841,6 @@ public void shellMain() {
         cursorPos = 0;
         list_upper = 0;
         state = PLAYLIST_SORTFINDINSERT;
-        setCurrentState(state);
         playListSortSongs(listNum, idx);
         free_playlist_register();
         malloc_playlist_sort(list_upper);
@@ -838,7 +854,6 @@ public void shellMain() {
         cursorPos = 0;
         list_upper = 0;
         state = PLAYLIST_SORTSONGS;
-        setCurrentState(state);
         showPlayListSongs(listNum, false);
         malloc_playlist_register(listNum, list_upper);
         setScreenMenuItems(state, playList_register);
@@ -852,32 +867,30 @@ public void shellMain() {
         state = HOME_STATE;
         cursorPos = prevcursor[state];
         list_upper = prevupper[state];
-        setCurrentState(state);
+        removeChangeScreen();
         showScreen(state, cursorPos);
       }
       else if (state == MUSIC_INF) {
-        if (prevState == MUSIC_STATE) {
+        if (prevState[stateidx] == MUSIC_STATE) {
           state = MUSIC_STATE;
         } else {
           state = PLAYLIST_SONGS;
         }
         cursorPos = prevcursor[state];
         list_upper = prevupper[state];
-        setCurrentState(state);
+        removeChangeScreen();
         showScreen(state, cursorPos);
       }
       else if (state == VOLUME_STATE) {
         state = OPTION_STATE;
         cursorPos = prevcursor[state];
         list_upper = prevupper[state];
-        setCurrentState(state);
         showScreen(state, cursorPos);
       }
       else if (state == CONTRAST_STATE) {
         state = OPTION_STATE;
         cursorPos = prevcursor[state];
         list_upper = prevupper[state];
-        setCurrentState(state);
         showScreen(state, cursorPos);
       }
       else if (state == PLAYLIST_STATE) {
@@ -885,7 +898,7 @@ public void shellMain() {
         state = HOME_STATE;
         cursorPos = prevcursor[state];
         list_upper = prevupper[state];
-        setCurrentState(state);
+        removeChangeScreen();
         showScreen(state, cursorPos);
       }
       else if (state == PLAYLIST_SONGS) {
@@ -893,7 +906,7 @@ public void shellMain() {
         state = PLAYLIST_STATE;
         cursorPos = prevcursor[state];
         list_upper = prevupper[state];
-        setCurrentState(state);
+        removeChangeScreen();
         malloc_playlist(list_upper);
         showScreen(state, cursorPos);
       }
@@ -906,7 +919,7 @@ public void shellMain() {
         free_playlist_register();
         showPlayListSongs(listNum, true);
         malloc_playlist_register(listNum, list_upper); // プレイリスト追加の変更反映
-        setCurrentState(state);
+        removeChangeScreen();
         setScreenMenuItems(state, playList_register);
         showScreen(state, cursorPos);
       }
@@ -917,7 +930,7 @@ public void shellMain() {
         cursorPos = prevcursor[state];
         list_upper = prevupper[state];
         malloc_playlist(list_upper);
-        setCurrentState(state);
+        removeChangeScreen();
         setScreenMenuItems(state, playList);
         showScreen(state, cursorPos);
       }
@@ -928,7 +941,7 @@ public void shellMain() {
         list_upper = prevupper[state];
         showPlayListSongs(listNum, true);
         malloc_playlist(list_upper);
-        setCurrentState(state);
+        removeChangeScreen();
         setScreenMenuItems(state, playList);
         showScreen(state, cursorPos);
       }
@@ -939,7 +952,7 @@ public void shellMain() {
         list_upper = prevupper[state];
         showPlayListSongs(listNum, false);
         malloc_playlist_register(listNum, list_upper);
-        setCurrentState(state);
+        removeChangeScreen();
         setScreenMenuItems(state, playList_register);
         showScreen(state, cursorPos);
       }
@@ -947,10 +960,11 @@ public void shellMain() {
     else if (num == 4) { // SW4 = プレイリストの編集モード
       if (state == PLAYLIST_SONGS) {
         delIdxInit();
+        saveChangeScreen(state);
         state = PLAYLIST_DELETESONGS;
         showPlayListSongs(listNum, false);        // "+" を表示させない
-        setCurrentState(state);
         free_playlist_register();
+        removeChangeScreen();
         malloc_playlist_register(listNum, list_upper);
         if (cursorPos + list_upper >= playListSongsGetNum(listNum)) {
           cursorPos = cursorPos - 1;
@@ -958,10 +972,11 @@ public void shellMain() {
         setScreenMenuItems(state, playList_register);
         showScreen(state, cursorPos);
       } else if (state == PLAYLIST_DELETESONGS) {
+        saveChangeScreen(state);
         state = PLAYLIST_SORTSONGS;
         showPlayListSongs(listNum, false);       // "+" を表示させない
-        setCurrentState(state);
         free_playlist_register();
+        removeChangeScreen();
         malloc_playlist_register(listNum, list_upper);
         if (cursorPos + list_upper >= playListSongsGetNum(listNum)) {
           cursorPos = cursorPos - 1;
@@ -969,10 +984,11 @@ public void shellMain() {
         setScreenMenuItems(state, playList_register);
         showScreen(state, cursorPos);
       } else if (state == PLAYLIST_SORTSONGS) {
+        saveChangeScreen(state);
         state = PLAYLIST_SONGS;
         showPlayListSongs(listNum, true);       // PLAYLIST_SONGS に遷移するときは "+" を表示させる
-        setCurrentState(state);
         free_playlist_register();
+        removeChangeScreen();
         if (numItems == 0) {
           cursorPos = 0;
         }
@@ -982,23 +998,15 @@ public void shellMain() {
       }
     }
     else if (num == 6) { // SW6 = OPTION 画面の出入り
-      if (state == VOLUME_STATE || state == CONTRAST_STATE) {
-        state = prevState;
+      if (state == VOLUME_STATE || state == CONTRAST_STATE || state == OPTION_STATE) {
+        state = prevState[stateidx];      // 前の画面に戻るために履歴から state を呼び出す
+        removeChangeScreen();             // 前の画面の情報を消す
         cursorPos = prevcursor[state];
         list_upper = prevupper[state];
-        setCurrentState(state);
         showScreen(state, cursorPos);
-      }
-      else if (state == OPTION_STATE) {
-        state = prevState;      // OPTIONに入る前の状態を記録
-        cursorPos = prevcursor[state];
-        list_upper = prevupper[state];
-        setCurrentState(state);
-        showScreen(state, cursorPos); 
       } else { //OPTION画面に入る．
-        prevState = state;
+        saveChangeScreen(state);         // option 前の画面情報を保持する
         state = OPTION_STATE;
-        setCurrentState(state);
         cursorPos = 0;
         showScreen(state, cursorPos);
       }
