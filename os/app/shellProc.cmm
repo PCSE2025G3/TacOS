@@ -397,7 +397,8 @@ void free_playlist_sort(){
 //-----------------------------------------
 //シャッフルリスト
 //-----------------------------------------
-void generateshuffleList(int total) {
+void generateshuffleList(int total, int currentMusicIdx) {
+  srand(getTimerSec());
   shuffleList = malloc(total * 2);
   for (int i = 0; i < total; i = i + 1) {
     shuffleList[i] = i + 1;
@@ -408,7 +409,16 @@ void generateshuffleList(int total) {
     shuffleList[i] = shuffleList[i + j];
     shuffleList[i + j] = tmp;
   }
-  shuffleIndex = 0;
+
+  for (int i = 0; i < total; i = i + 1) {
+    if (shuffleList[i] == currentMusicIdx) {
+      int tmp = shuffleList[0];
+      shuffleList[0] = shuffleList[i];
+      shuffleList[i] = tmp;
+      break;
+    }
+  }
+  shuffleIndex = 1;
 }
 
 //-----------------------------------------
@@ -667,11 +677,7 @@ public void shellMain() {
         }
       }
       else if (state == MUSIC_INF) {
-        if (cursorPos == 0) {  // PLAY 選択
-          if (shuffleMode == 1 && shuffleIndex < mp3FilesGetTotalNum()) { //シャッフル→プレイ→NEXTが押されたときのため
-            music_idx = shuffleList[shuffleIndex];
-            shuffleIndex = shuffleIndex + 1;
-          }
+        if (cursorPos == 0) {  // PLAY 選択  
           char[] path = mp3FilesGetPath(music_idx);  // 曲パス取得
           if (path != null) {
             timerStop();
@@ -695,19 +701,22 @@ public void shellMain() {
           lastShownSec = -1;
           total = mp3FilesGetTotalNum();
 
-        if (shuffleMode == 1) {
+          if (shuffleMode == 1) { 
+            total = mp3FilesGetTotalNum();
             if (shuffleIndex < total) {
-              music_idx = shuffleList[shuffleIndex];
+              music_idx = shuffleList[shuffleIndex];   // 次のシャッフル曲
               shuffleIndex = shuffleIndex + 1;
-            } else {
-              shuffleMode = 0;
+            } else {                                 // 列の終端
+              shuffleMode = 0;                       // 自然終了だけ解除
               showShuffleClear();
               free_shuffleList();
               isPlayRequested = 0;
               continue;
             }
-          } else if (repeatMode != 1) {
-            music_idx = (music_idx % total) + 1;
+          } else {
+            if (repeatMode != 1) {
+              music_idx = (music_idx % total) + 1;
+            }
           }
           char[] nextTitle = mp3FilesGetName(music_idx);
           if (nextTitle != null) {
@@ -726,8 +735,19 @@ public void shellMain() {
           timerStop();
           lastShownSec = -1;
           total = mp3FilesGetTotalNum();
-          if (repeatMode != 1){
-            music_idx = (music_idx + total - 2) % total + 1;
+
+          if (shuffleMode == 1) {
+            if (shuffleIndex > 1) {
+              shuffleIndex = shuffleIndex - 1;                  // ひとつ前に戻す
+              music_idx = shuffleList[shuffleIndex - 1];        // その前の曲を再生
+            } else {
+              shuffleIndex = 1;                                 // 先頭固定（最初の曲）
+              music_idx = shuffleList[0];
+            }
+          }else {
+            if (repeatMode != 1){
+              music_idx = (music_idx + total - 2) % total + 1;
+            }
           }
           char[] prevTitle = mp3FilesGetName(music_idx);
           if (prevTitle != null) {
@@ -755,20 +775,26 @@ public void shellMain() {
             showRepeatAll();
           }
         }
-        else if (cursorPos == 5) { //SHUFLE選択
-          if(shuffleMode == 0) {
+        else if (cursorPos == 5) { // SHUFLE 選択
+          if (shuffleMode == 0) {
             shuffleMode = 1;
             showShuffleTrue();
-            generateshuffleList(mp3FilesGetTotalNum());
-            shuffleIndex = 0;
+            generateshuffleList(mp3FilesGetTotalNum(), music_idx);
+            shuffleIndex = 1;
             repeatMode = 0; //シャッフル時リピートは無効化
             showRepeatClear();
-          }else {
+
+            //直後に今の曲が先頭に来ていたらスキップ
+            if (shuffleList[shuffleIndex] == music_idx) {
+              shuffleIndex = shuffleIndex + 1;  // 次の曲から再生
+            }
+          } else {
             shuffleMode = 0;
             showShuffleClear();
             free_shuffleList();
           }
         }
+
       }
       else if (state == OPTION_STATE) {
         if (cursorPos == 0) {  // VOLUME
