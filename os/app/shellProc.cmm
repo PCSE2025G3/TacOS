@@ -58,7 +58,7 @@
 //------------------------------------------------------------------------------------------------------------------------------------------------
 //画面ごとの番号定義 
 // 0:ホーム　1：曲一覧　2：再生画面　3：オプション　4：音量調整　5：コントラスト調整　6.プレイリスト　7.プレイリストの登録曲表示　8.プレイリストの曲追加
-// 9:プレイリストの曲削除　10:プレイリストの曲順序入れ替え　11:insert 先の選択　12:オープニング
+// 9:プレイリストの曲削除　10:プレイリストの曲順序入れ替え　11:insert 先の選択　12:オープニング画面　13：スリープ画面
 //------------------------------------------------------------------------------------------------------------------------------------------------
 #define HOME_STATE 0
 #define MUSIC_STATE 1
@@ -73,6 +73,7 @@
 #define PLAYLIST_SORTSONGS 10
 #define PLAYLIST_SORTFINDINSERT 11
 #define OPENING 12
+#define SLEEP_STATE 13
 //------------------------------------------------------------------------------------------------------------------------------------------------
 
 #define MAX_LIST 6
@@ -480,6 +481,10 @@ public void shellMain() {
   int idx = 0;
   int status;
   int lastShownSec = -1;
+  int sleeptime = 10;
+  int seed = 0;
+  int sleepFrame = 0;
+  boolean sleepInit;
 
   showScreen(state, cursorPos); // 初期状態
 
@@ -488,6 +493,47 @@ public void shellMain() {
     int sw = readSw();
     int num = swToNum(sw);
     int filenum = mp3FilesGetTotalNum(); //MP3ファイルの総数
+
+    if(num!=-1) {
+      seed = seed + 1;
+      seed = seed % 1000;
+    }
+
+    if (playing_status() == 0 && num == -1 && getTimerStatus() == 0) {             // もし音楽が再生されていなかったらタイマーは使われていないはずなので
+      timerStart();
+    } else if (playing_status() == 0 && num != -1 && getTimerStatus() == 1) {
+      timerStop();
+    }
+
+    if (getTimerSec() >= sleeptime && state != SLEEP_STATE && playing_status() == 0) {
+      prevState[stateidx] = state;
+      saveChangeScreen(state);
+      state = SLEEP_STATE;
+      showScreen(SLEEP_STATE, -1);
+      initSleepCrown(seed);
+      putSleepClown();
+      sleepFrame = 0;
+    }
+    
+    if (state == SLEEP_STATE) {
+      sleepFrame = sleepFrame + 10;
+      if (sleepFrame >= 800) {
+        cls();
+        putSleepClown();
+        sleepFrame = 0;
+      }
+    }
+
+    // スリープ画面からの復帰
+    if (num!=-1 && state == SLEEP_STATE) {
+      timerStop();
+      state = prevState[stateidx];      // 前の画面に戻るために履歴から state を呼び出す
+      removeChangeScreen();             // 前の画面の情報を消す
+      cursorPos = prevcursor[state];
+      list_upper = prevupper[state];
+      showScreen(state, cursorPos);
+      continue;
+    }
 
     if (state == MUSIC_INF  && isPlayRequested == 1 && strCmp(nowpath,tmp) == 0) {
       int now = getTimerSec();
