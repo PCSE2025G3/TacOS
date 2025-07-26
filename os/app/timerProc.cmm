@@ -34,6 +34,7 @@
 #include "spi.hmm"
 #include "lcd.hmm"
 #include "screenState.hmm"
+#include "mp3Proc.hmm"
 
 // メッセージ
 #define TIMER_STOP 1
@@ -50,7 +51,9 @@ int link;                                   // メッセージ通信用のリン
 boolean syncFlag = false;                   // クライアントが同期待ちである
 boolean showFlag = true;
 int timer_sec = 0;
+int timer_msec = 0;
 int timer_offset = 0;
+int timerState = 0;
 
 //-------------------------------------
 // クライアント（ShellProc）が呼び出す
@@ -59,24 +62,43 @@ int timer_offset = 0;
 // タイマーカウント停止
 public void timerStop() {
   syncFlag = true;                          // コマンド待ちにする
+  timerState = 0;
   sndrec(link, TIMER_STOP, 0, 0, 0);           // 同期要求メッセージを送る
 }
 
 // タイマーカウントスタート
 public void timerStart() {
   syncFlag = false;
+  timerState = 1;
   sndrec(link, TIMER_START, 0, 0, 0);
 }
 
 void countTimer() {
   send(link,OK);                            // クライアントに成功を通知
   timer_sec = 0;
-  spiWriteMp3Reg(0x04, 0x00);
-  spiWriteMp3Reg(0x04, 0x00); 
-  while(true) {
-    sleep(200);
-    timer_sec = spiReadMp3Reg(0x4);
-    if (syncFlag) break;
+  if (playing_status() == 1) {              // もし曲再生中ならば spi からもってくる
+    spiWriteMp3Reg(0x04, 0x00);
+    spiWriteMp3Reg(0x04, 0x00); 
+    while(true) {
+      sleep(200);
+      timer_sec = spiReadMp3Reg(0x4);
+      if (syncFlag) break;
+    }
+  } else {
+    timer_msec = 0;
+    while(true) {
+      sleep(90);
+      int i = 0;
+      for (int n = 0; n < 12680; n = n + 1) {
+        i = i + n;
+      }
+      timer_msec = timer_msec + 100;
+      if (timer_msec >= 1000) {
+        timer_sec = timer_sec + 1;
+        timer_msec = 0;
+      }
+      if (syncFlag) break;
+    }
   }
 }
 
@@ -97,4 +119,9 @@ public void timerMain() {
 // タイマーのカウント秒数を返す．描画は shellProc に任せる
 public int getTimerSec() {
   return timer_sec;
+}
+
+// タイマーの起動状態を返す．
+public int getTimerStatus() {
+  return timerState;
 }

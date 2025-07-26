@@ -32,3 +32,4 @@
  public void timerStop();
  public void timerStart();
  public int getTimerSec();
+ public int getTimerStatus();

@@ -50,3 +50,5 @@ public int[] getAllDelIdx();
 public void putChCrown(int i);
 public void showCrown(int m, int n);
 public void showTime(int n);
+public void initSleepCrown(int sd);
+public void putSleepClown();

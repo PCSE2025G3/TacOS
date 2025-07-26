@@ -34,6 +34,7 @@
 #include "spi.hmm"
 #include "font.hmm"
 #include "lcd.hmm"
+#include <stdlib.hmm>
 
 #define MAX_FILE 50
 int[] addIdx = array(MAX_FILE); // 追加曲用のidx
@@ -45,6 +46,12 @@ char[] locateCom = { '\xb0',   // page address
                      '\x10',   // column address Hi = 0x00
                      '\x00',   // column address Lo = 0x00
                      '\xff' }; // EOF
+
+int locateX;
+int locateY;
+int dx;
+int dy;
+boolean newClown = true;
 
 // 液晶上でカーソルを(x,y)に移動
 public void locateXY(int x, int y) {
@@ -224,4 +231,65 @@ public void showTime(int n) {
   putCh(':');
   putCh(chs[0]);
   putCh(chs[1]);
+}
+
+void showOldCrown(int m, int n) {
+  int idx = 16;
+  for (int i = 0; i < 4; i = i + 1) {
+    locateXY(m,n+i);
+    for (int j = 0; j < 4; j = j + 1) {
+      putChCrown(idx);
+      idx = idx + 1;
+    }
+  }
+}
+
+
+// -----------------------------------------------
+// シード値を初期化して描画位置を乱数で決める．
+// -----------------------------------------------
+public void initSleepCrown(int sd) {
+  srand(sd);
+  locateX = rand() % 12 + 2;
+  locateY = rand() % 4 + 2;
+  dx = (rand() % 2) * 2 - 1;          // -1 か 1 にする
+  dy = (rand() % 2) * 2 - 1;          // -1 か 1 にする
+  newClown = true;                    // 最初の描画は13代目の王冠マーク
+}
+
+
+// スリープ画面で王冠マークを動かして，壁にあたったら反射させる
+// 王冠は 4*4 文字分なので，判定には注意しなければならない
+public void putSleepClown() {
+
+  if (newClown) {
+    showCrown(locateX + dx, locateY + dy);
+  } else {
+    showOldCrown(locateX + dx, locateY + dy);
+  }
+  
+  locateX = locateX + dx;
+  locateY = locateY + dy;
+
+  // X方向の壁衝突判定＋反転＋補正
+  if (locateX <= 0) {
+    locateX = 1;
+    dx = 1;
+    newClown = !newClown;
+  } else if (locateX >= 12) {
+    locateX = 11;
+    dx = -1;
+    newClown = !newClown;
+  }
+
+  // Y方向の壁衝突判定＋反転＋補正
+  if (locateY <= 0) {
+    locateY = 1;
+    dy = 1;
+    newClown = !newClown;
+  } else if (locateY >= 4) {
+    locateY = 3;
+    dy = -1;
+    newClown = !newClown;
+  }
 }
