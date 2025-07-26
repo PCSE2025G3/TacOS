@@ -47,6 +47,10 @@
 #define OK 0
 #define ERR 1
 
+// モード定義
+#define TIMER_MODE_SLEEP    1
+#define TIMER_MODE_PLAYBACK 2
+
 int link;                                   // メッセージ通信用のリンク
 boolean syncFlag = false;                   // クライアントが同期待ちである
 boolean showFlag = true;
@@ -54,6 +58,7 @@ int timer_sec = 0;
 int timer_msec = 0;
 int timer_offset = 0;
 int timerState = 0;
+int timerMode = 0;
 
 //-------------------------------------
 // クライアント（ShellProc）が呼び出す
@@ -63,11 +68,13 @@ int timerState = 0;
 public void timerStop() {
   syncFlag = true;                          // コマンド待ちにする
   timerState = 0;
+  timerMode = 0;
   sndrec(link, TIMER_STOP, 0, 0, 0);           // 同期要求メッセージを送る
 }
 
 // タイマーカウントスタート
-public void timerStart() {
+public void timerStart(int mode) {
+  timerMode  = mode;
   syncFlag = false;
   timerState = 1;
   sndrec(link, TIMER_START, 0, 0, 0);
@@ -76,17 +83,20 @@ public void timerStart() {
 void countTimer() {
   send(link,OK);                            // クライアントに成功を通知
   timer_sec = 0;
-  if (playing_status() == 1) {              // もし曲再生中ならば spi からもってくる
+  timer_msec = 0;
+  if (timerMode == TIMER_MODE_PLAYBACK) {
+    // MP3 再生タイマー
     spiWriteMp3Reg(0x04, 0x00);
     spiWriteMp3Reg(0x04, 0x00); 
-    while(true) {
+    while (true) {
       sleep(200);
-      timer_sec = spiReadMp3Reg(0x4);
+      timer_sec = spiReadMp3Reg(0x4);  // 秒数を読み取り
       if (syncFlag) break;
     }
-  } else {
-    timer_msec = 0;
-    while(true) {
+
+  } else if (timerMode == TIMER_MODE_SLEEP) {
+    // 無音タイマー
+    while (true) {
       sleep(90);
       int i = 0;
       for (int n = 0; n < 12680; n = n + 1) {
@@ -124,4 +134,8 @@ public int getTimerSec() {
 // タイマーの起動状態を返す．
 public int getTimerStatus() {
   return timerState;
+}
+
+public int getTimerMode() {
+  return timerMode;
 }
