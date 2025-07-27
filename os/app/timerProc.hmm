@@ -30,6 +30,7 @@
 
  public void timerMain();
  public void timerStop();
- public void timerStart();
+ public void timerStart(int mode);
  public int getTimerSec();
  public int getTimerStatus();
+ public int getTimerMode();

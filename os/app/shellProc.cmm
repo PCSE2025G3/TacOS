@@ -78,6 +78,8 @@
 
 #define MAX_LIST 6
 #define NAME_LEN 16
+#define TIMER_MODE_SLEEP    1
+#define TIMER_MODE_PLAYBACK 2
 
 char[][] musicList;
 char[][] playList;
@@ -104,6 +106,7 @@ int listNum = 0;                                    // 選択されたプレイ�
 int elementNum = 0;                                 // 表示する要素数の保持
 int numItems = 0;
 int stateidx = 0;                                   // 画面遷移のインデクスを保持するための変数
+int seed = 0;
 
 int readSw() {
   int sw = ~in(0x18) & SWS;                         // スイッチを読み正論理に変換
@@ -201,7 +204,7 @@ void showScreen(int state, int cursorPos) {
       } else if (shuffleMode == 1) {
         showShuffleTrue();
       }
-      if (isPlayRequested == 1 && strCmp(nowpath, tmp) == 0) {
+      if (getTimerMode() == TIMER_MODE_PLAYBACK && strCmp(nowpath, tmp) == 0) {
         showTime(getTimerSec());
       }
     }
@@ -399,7 +402,7 @@ void free_playlist_sort(){
 //シャッフルリスト
 //-----------------------------------------
 void generateshuffleList(int total, int currentMusicIdx) {
-  srand(getTimerSec());
+  srand(seed);
   shuffleList = malloc(total * 2);
   for (int i = 0; i < total; i = i + 1) {
     shuffleList[i] = i + 1;
@@ -492,9 +495,9 @@ public void shellMain() {
   int status;
   int lastShownSec = -1;
   int sleeptime = 10;
-  int seed = 0;
   int sleepFrame = 0;
-  boolean sleepInit;
+  int silentFrames = 0;
+  boolean justWokeUpFromSleep = false;
 
   showScreen(state, cursorPos); // 初期状態
 
@@ -509,14 +512,34 @@ public void shellMain() {
       seed = seed % 1000;
     }
 
-    if (playing_status() == 0 && num == -1 && getTimerStatus() == 0) {             // もし音楽が再生されていなかったらタイマーは使われていないはずなので
-      timerStart();
-    } else if (playing_status() == 0 && num != -1 && getTimerStatus() == 1) {
+    // スリープ画面からの復帰
+    if (num!=-1 && state == SLEEP_STATE) {
       timerStop();
+      silentFrames = 0;
+      state = prevState[stateidx];      // 前の画面に戻るために履歴から state を呼び出す
+      removeChangeScreen();             // 前の画面の情報を消す
+      cursorPos = prevcursor[state];
+      list_upper = prevupper[state];
+      showScreen(state, cursorPos);
+      continue;
     }
 
-    if (getTimerSec() >= sleeptime && state != SLEEP_STATE && playing_status() == 0) {
-      prevState[stateidx] = state;
+    if (playing_status() == 0 && num == -1) {
+      silentFrames = silentFrames + 1;
+    } else if (playing_status() == 1) {
+      // 曲が明らかに再生中なら silentFrames をリセット
+      silentFrames = 0;
+    }
+
+    // タイマーの開始・停止判定
+    if (silentFrames >= 300 && getTimerStatus() == 0) {
+      timerStart(TIMER_MODE_SLEEP);
+    } else if (silentFrames < 300 && getTimerStatus() == 1 && playing_status() == 0 && getTimerMode() != TIMER_MODE_PLAYBACK) {
+       timerStop();
+    }
+
+
+    if (getTimerSec() >= sleeptime && state != SLEEP_STATE && getTimerMode() == TIMER_MODE_SLEEP) {
       saveChangeScreen(state);
       state = SLEEP_STATE;
       showScreen(SLEEP_STATE, -1);
@@ -534,18 +557,7 @@ public void shellMain() {
       }
     }
 
-    // スリープ画面からの復帰
-    if (num!=-1 && state == SLEEP_STATE) {
-      timerStop();
-      state = prevState[stateidx];      // 前の画面に戻るために履歴から state を呼び出す
-      removeChangeScreen();             // 前の画面の情報を消す
-      cursorPos = prevcursor[state];
-      list_upper = prevupper[state];
-      showScreen(state, cursorPos);
-      continue;
-    }
-
-    if (state == MUSIC_INF  && isPlayRequested == 1 && strCmp(nowpath,tmp) == 0) {
+    if (state == MUSIC_INF  && getTimerMode() == TIMER_MODE_PLAYBACK && strCmp(nowpath,tmp) == 0) {
       int now = getTimerSec();
       if (now != lastShownSec) {
         showScreen(MUSIC_INF, cursorPos);  // 秒が変わったら画面を更新
@@ -729,7 +741,7 @@ public void shellMain() {
             timerStop();
             lastShownSec = -1;
             play(path);
-            timerStart();
+            timerStart(TIMER_MODE_PLAYBACK);
             strCpy(nowpath,path);
             isPlayRequested = 1;
           }
@@ -771,7 +783,7 @@ public void shellMain() {
             char[] path = mp3FilesGetPath(music_idx);
             if (status == 1) {
               play(path);
-              timerStart();
+              timerStart(TIMER_MODE_PLAYBACK);
             }
           }
         }
@@ -802,7 +814,7 @@ public void shellMain() {
             char[] path = mp3FilesGetPath(music_idx);
             if (status == 1) {
               play(path);
-              timerStart();
+              timerStart(TIMER_MODE_PLAYBACK);
             }
           }
         }
@@ -1117,13 +1129,17 @@ public void shellMain() {
           music_idx = shuffleList[shuffleIndex];
           shuffleIndex = shuffleIndex + 1;
           char[] title = mp3FilesGetName(music_idx);
+          char[] title_path = mp3FilesGetPath(music_idx);
+          strCpy(tmp, title_path);
           if (title != null) {
             setScreenTitle(MUSIC_INF, title);
             showScreen(state, cursorPos);
             char[] path = mp3FilesGetPath(music_idx);
+            strCpy(nowpath,path);
             timerStop();
+            lastShownSec = -1;
             play(path);
-            timerStart();
+            timerStart(TIMER_MODE_PLAYBACK);
             isPlayRequested = 1;
           }
         } else {  //再生する曲がなくなったら
@@ -1138,15 +1154,19 @@ public void shellMain() {
           if (music_idx >= total) {
             isPlayRequested = 0;
           } else {
+            timerStop();    // 前の曲のタイマーを止める
+            lastShownSec = -1;
             music_idx = (music_idx % total) + 1;
             char[] nextTitle = mp3FilesGetName(music_idx);
+            char[] title_path = mp3FilesGetPath(music_idx);
+            strCpy(tmp, title_path);
             if (nextTitle != null) {
               setScreenTitle(MUSIC_INF, nextTitle);
               showScreen(state, cursorPos);
               char[] path = mp3FilesGetPath(music_idx);
-              timerStop();    // 前の曲のタイマーを止める
+              strCpy(nowpath,path);
               play(path);
-              timerStart();   // 新たにタイマーを開始する
+              timerStart(TIMER_MODE_PLAYBACK);
               isPlayRequested = 1;
             }
           }
@@ -1157,13 +1177,17 @@ public void shellMain() {
             music_idx = (music_idx % total) + 1;
           }
           char[] autoTitle = mp3FilesGetName(music_idx);
+          char[] title_path = mp3FilesGetPath(music_idx);
+          strCpy(tmp, title_path);
           if (autoTitle != null) {
             setScreenTitle(MUSIC_INF, autoTitle);
             showScreen(state, cursorPos);
             char[] path = mp3FilesGetPath(music_idx);
+            strCpy(nowpath,path);
             timerStop();
+            lastShownSec = -1;
             play(path);
-            timerStart();
+            timerStart(TIMER_MODE_PLAYBACK);
             isPlayRequested = 1;
           }
         }
