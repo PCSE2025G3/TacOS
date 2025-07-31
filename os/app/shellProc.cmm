@@ -784,15 +784,18 @@ public void shellMain() {
           }
           char[] nextTitle = mp3FilesGetName(music_idx);
           if (nextTitle != null) {
-            setScreenTitle(MUSIC_INF, nextTitle);
-            showScreen(state, cursorPos);
             char[] path = mp3FilesGetPath(music_idx);
             strCpy(tmp,path);
             if (status == 1) {
+              timerStop();
+              lastShownSec = -1;
               play(path);
+              strCpy(nowpath,path);
               timerStart(TIMER_MODE_PLAYBACK);
             }
           }
+          setScreenTitle(MUSIC_INF, nextTitle);
+          showScreen(state, cursorPos);
         }
         else if (cursorPos == 3) {  // PREV 選択
           status = playing_status();
@@ -816,15 +819,18 @@ public void shellMain() {
           }
           char[] prevTitle = mp3FilesGetName(music_idx);
           if (prevTitle != null) {
-            setScreenTitle(MUSIC_INF, prevTitle);
-            showScreen(state, cursorPos);
             char[] path = mp3FilesGetPath(music_idx);
             strCpy(tmp,path);
             if (status == 1) {
+              timerStop();
+              strCpy(nowpath,path);
+              lastShownSec = -1;
               play(path);
               timerStart(TIMER_MODE_PLAYBACK);
             }
           }
+          setScreenTitle(MUSIC_INF, prevTitle);
+          showScreen(state, cursorPos);
         }
         else if (cursorPos == 4) { //REPEAT選択
           repeatMode = (repeatMode + 1) % 3;
