@@ -743,11 +743,12 @@ public void shellMain() {
         if (cursorPos == 0) {  // PLAY 選択  
           char[] path = mp3FilesGetPath(music_idx);  // 曲パス取得
           if (path != null) {
+            stop();
             timerStop();
             lastShownSec = -1;
+            strCpy(nowpath,path);
             play(path);
             timerStart(TIMER_MODE_PLAYBACK);
-            strCpy(nowpath,path);
             isPlayRequested = 1;
           }
         }
@@ -786,6 +787,7 @@ public void shellMain() {
             setScreenTitle(MUSIC_INF, nextTitle);
             showScreen(state, cursorPos);
             char[] path = mp3FilesGetPath(music_idx);
+            strCpy(tmp,path);
             if (status == 1) {
               play(path);
               timerStart(TIMER_MODE_PLAYBACK);
@@ -817,6 +819,7 @@ public void shellMain() {
             setScreenTitle(MUSIC_INF, prevTitle);
             showScreen(state, cursorPos);
             char[] path = mp3FilesGetPath(music_idx);
+            strCpy(tmp,path);
             if (status == 1) {
               play(path);
               timerStart(TIMER_MODE_PLAYBACK);
