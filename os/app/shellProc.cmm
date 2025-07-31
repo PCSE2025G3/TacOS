@@ -74,6 +74,7 @@
 #define PLAYLIST_SORTFINDINSERT 11
 #define OPENING 12
 #define SLEEP_STATE 13
+#define SLEEP_OPTION_STATE 14
 //------------------------------------------------------------------------------------------------------------------------------------------------
 
 #define MAX_LIST 6
@@ -107,6 +108,7 @@ int elementNum = 0;                                 // 表示する要素数の�
 int numItems = 0;
 int stateidx = 0;                                   // 画面遷移のインデクスを保持するための変数
 int seed = 0;
+int[] time = {10,30,60,180,300,-1};                 // 無操作状態でスリープ状態に遷移するまでの時間（単位：s）
 
 int readSw() {
   int sw = ~in(0x18) & SWS;                         // スイッチを読み正論理に変換
@@ -195,6 +197,9 @@ void showScreen(int state, int cursorPos) {
     }
     else if (state == VOLUME_STATE) {
       showLevelBar(getVolumeLevel());
+    }
+    else if (state == SLEEP_OPTION_STATE) {
+      showSleepTime(getSleepTimeIdx());
     }
     else if (state == MUSIC_INF) {
       if (repeatMode == 1) {
@@ -440,12 +445,13 @@ void free_shuffleList() {
 //-----------------------------------------------------------------------------
 // ここからプロセスの実行が始まる
 public void shellMain() {
-  spiResetLcd();  // sleepを使用するので
+  spiResetLcd();   // sleepを使用するので
   cls();
-  spiResetMp3();  //   プロセスが実行する
+  spiResetMp3();   //   プロセスが実行する
   mp3FilesInit();  // ファイル一覧を作る
-  playListInit(); // プレイリストの一覧を作る
-  initScreens();
+  playListInit();  // プレイリストの一覧を作る
+  initSettings();  // 設定データの読み込み
+  int sleeptime = time[getSleepTimeIdx()]; // スリープ状態に遷移するまでの時間の設定
 
 // ----------------------------------------------
 // オープニング画面の表示
@@ -494,7 +500,6 @@ public void shellMain() {
   int idx = 0;
   int status;
   int lastShownSec = -1;
-  int sleeptime = 10;
   int sleepFrame = 0;
   int silentFrames = 0;
   boolean justWokeUpFromSleep = false;
@@ -524,9 +529,9 @@ public void shellMain() {
       continue;
     }
 
-    if (playing_status() == 0 && num == -1) {
+    if (playing_status() == 0 && num == -1 && sleeptime > 0) {
       silentFrames = silentFrames + 1;
-    } else if (playing_status() == 1) {
+    } else if (playing_status() == 1 || num!=-1) {
       // 曲が明らかに再生中なら silentFrames をリセット
       silentFrames = 0;
     }
@@ -865,6 +870,11 @@ public void shellMain() {
           cursorPos = 0;
           showScreen(state, cursorPos);
         }
+        else if (cursorPos == 2) {  // スリープまでの時間設定
+          state = SLEEP_OPTION_STATE;
+          cursorPos = 0;
+          showScreen(state, cursorPos);
+        }
       }
       else if (state == VOLUME_STATE) {
         if (cursorPos == 0) {
@@ -881,6 +891,15 @@ public void shellMain() {
           showScreen(state, cursorPos);
         } else if (cursorPos == 1) {  // DOWN
           updateContrast(cursorPos);
+          showScreen(state, cursorPos);
+        }
+      }
+      else if (state == SLEEP_OPTION_STATE) {
+        if (cursorPos == 0) {
+          updateSleepTimeIdx(cursorPos);
+          showScreen(state, cursorPos);
+        } else if (cursorPos == 1) {
+          updateSleepTimeIdx(cursorPos);
           showScreen(state, cursorPos);
         }
       }
@@ -983,11 +1002,19 @@ public void shellMain() {
       else if (state == MUSIC_INF) {
         if (prevState[stateidx] == MUSIC_STATE) {
           state = MUSIC_STATE;
+          cursorPos = prevcursor[state];
+          list_upper = prevupper[state];
         } else {
           state = PLAYLIST_SONGS;
+          cursorPos = prevcursor[state];
+          list_upper = prevupper[state];
+          mp3FilesInit();
+          showPlayListSongs(listNum, true);
+          free_playlist_register();
+          malloc_playlist_register(listNum, list_upper);
+          setScreenMenuItems(state, playList_register);
         }
-        cursorPos = prevcursor[state];
-        list_upper = prevupper[state];
+        
         removeChangeScreen();
         showScreen(state, cursorPos);
       }
@@ -1001,6 +1028,13 @@ public void shellMain() {
         state = OPTION_STATE;
         cursorPos = prevcursor[state];
         list_upper = prevupper[state];
+        showScreen(state, cursorPos);
+      }
+      else if (state == SLEEP_OPTION_STATE){
+        state = OPTION_STATE;
+        cursorPos = prevcursor[state];
+        list_upper = prevupper[state];
+        sleeptime = time[getSleepTimeIdx()];  // スリープまでの時間更新
         showScreen(state, cursorPos);
       }
       else if (state == PLAYLIST_STATE) {
@@ -1108,11 +1142,13 @@ public void shellMain() {
       }
     }
     else if (num == 6) { // SW6 = OPTION 画面の出入り
-      if (state == VOLUME_STATE || state == CONTRAST_STATE || state == OPTION_STATE) {
+      if (state == VOLUME_STATE || state == CONTRAST_STATE || state == OPTION_STATE || state == SLEEP_OPTION_STATE) {
         state = prevState[stateidx];      // 前の画面に戻るために履歴から state を呼び出す
         removeChangeScreen();             // 前の画面の情報を消す
         cursorPos = prevcursor[state];
         list_upper = prevupper[state];
+        sleeptime = time[getSleepTimeIdx()]; // sleep時間変更画面から直接戻った場合の変更を反映する．
+        writeSettingsData();              // 設定データのファイルへの書き込み
         showScreen(state, cursorPos);
       } else { //OPTION画面に入る．
         saveChangeScreen(state);         // option 前の画面情報を保持する

@@ -52,3 +52,4 @@ public void showCrown(int m, int n);
 public void showTime(int n);
 public void initSleepCrown(int sd);
 public void putSleepClown();
+public void showSleepTime(int idx);

@@ -17,7 +17,8 @@ char[][] screenTitles = {
     "SORT SONGS",
     "CHOOSE INS PLACE",
     "   MP3 PLAYER",
-    ""
+    "",
+    "SLEEP TIME"
 };
 
 // 各画面のメニュー項目（stateごとにメニューの文字列配列を持つ）
@@ -25,7 +26,7 @@ char[][][] screenMenuItems = {
     { "1: MUSIC", "2: PLAYLIST" },  // ホーム画面
     { "", "", "", "", "", ""},  //曲選択画面
     { "PLAY", "PAUSE", "NEXT", "PREV", "REPEAT", "SHUFFLE"},  //曲再生画面
-    { "VOLUME", "CONTRAST"},  //オプション画面
+    { "VOLUME", "CONTRAST", "SLEEP TIME"},  //オプション画面
     { "UP", "DOWN"},
     { "UP", "DOWN"},
     { "", "", "", "", "", ""}, //リスト表示画面
@@ -35,7 +36,8 @@ char[][][] screenMenuItems = {
     { "", "", "", "", "", ""},
     { "", "", "", "", "", ""},
     { "", "", "", "", "", ""},
-    { "", "", "", "", "", ""}
+    { "", "", "", "", "", ""},
+    { "UP", "DOWN"}
 };
 
 // 各画面のメニュー項目数
@@ -46,7 +48,7 @@ int[] screenNumItems = {
     2,
     0, 
     6,
-    2,
+    3,
     2,
     2,
     0,
@@ -56,12 +58,9 @@ int[] screenNumItems = {
     0,
     0,
     6,
-    0
+    0,
+    2
 };
-
-// 初期化処理
-public void initScreens() {
-}
 
 // 各画面のタイトルを取得
 public char[] getScreenTitle(int state) {
