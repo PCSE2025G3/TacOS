@@ -47,6 +47,15 @@ char[] locateCom = { '\xb0',   // page address
                      '\x00',   // column address Lo = 0x00
                      '\xff' }; // EOF
 
+char[][] time = {   // スリープまでの時間の表示用
+  "  10",
+  "  30",
+  "  60",
+  " 180",
+  " 300",
+  "None"
+};
+
 int locateX;
 int locateY;
 int dx;
@@ -291,5 +300,15 @@ public void putSleepClown() {
     locateY = 3;
     dy = -1;
     newClown = !newClown;
+  }
+}
+
+public void showSleepTime(int idx) {
+
+  locateXY(5,4);
+  putStr(time[idx]);  // 設定秒数の表示
+
+  if (idx != 5) {
+    putStr(" sec");   // None でなければ，単位を表示させる．
   }
 }

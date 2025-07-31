@@ -143,6 +143,10 @@ public void showPlayListSongs(int n, boolean isPlus) {  // 第二引数：リス
     playList[m][strLen(playList[m])] = '\0';       // 最後に終端記号を入れる．
     line_num[n-1] = m + 1;                         // プレイリストに登録されている曲数を代入する．
   }
+
+  // -------------------------------------------!!CAUTION!!-------------------------------------------------
+  // mp3FilesGetTotalNum() の扱いには注意すること．プレイリスト ⇔ 曲再生 で mp3FilesInit() を実行したか確認すること．
+  // -------------------------------------------!!CAUTION!!-------------------------------------------------
   if (line_num[n-1] != mp3FilesGetTotalNum() && line_num[n-1] < MAX_LIST && isPlus){     // プレイリストに登録されている曲数がMP3フォルダ直下にある曲数と等しくなければ "+" アイコンを追加
     strCat(playList[line_num[n-1]],"+");
     line_num[n-1] = line_num[n-1] + 1;
