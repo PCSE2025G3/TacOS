@@ -26,3 +26,4 @@
  *
  */
 public char[] font(char code);
+public char[] fontCrown(int idx);

@@ -32,11 +32,20 @@
 #include "appUtil.hmm"
 #include "mp3Files.hmm"
 
+//------------------------------!!CAUTION!!------------------------------------
+//TacOS はファイル名として 8.3 方式（Short FileName: SFN）を採用している．
+//そのため，ファイル名に空白を含んではならず，かつ拡張子を除き8文字に抑えなければならない．
+//規則を守らないと，切り詰めや省略が生じる．
+//例：Heart of Justice.mp3 の場合 ファイルシステムでよみこむと Heart~26.mp3 となる．
+//------------------------------!!CAUTION!!------------------------------------
+
+
 //-----------------------------------------------------------------------------
-// MP3ファイルの一覧（ただし，最大５個）
+// MP3ファイルの一覧（ただし，最大50個）
 //-----------------------------------------------------------------------------
-// ５つのファイル名
-char[][] fnames = array(5, 13);                     // 12345678.123
+#define MAX_FILE 50
+//30個のファイル名
+char[][] fnames = array(MAX_FILE, 13);                     // 12345678.123
 int numFile;                                        // ファイルの個数
 
 char[] mp3Dir = "/MP3";
@@ -51,13 +60,16 @@ char[] fnameToPath(char[] fname) {
 
 // /MP3 ディレクトリからファイルの一覧を作る（初期化）
 public void mp3FilesInit() {
+  for (int s = 0; s < MAX_FILE; s = s + 1) {
+    fnames[s][0] = '\0'; 
+  }
   int fd;                                           // ファイルディスクリプタ
   if ((fd=open(mp3Dir, READ_MODE))<0) {
     panic("panic:can't open MP3 Dir");
   }
   Dir dir;
   int i = 0;
-  while (i<5 && (dir=readDir(fd, "MP3"))!=null) {   // 最大5つファイル名を読む
+  while (i<MAX_FILE && (dir=readDir(fd, "MP3"))!=null) {   // 最大15つファイル名を読む
     strCpy(fnames[i], dir.name);
     i = i + 1;
   }
@@ -65,7 +77,7 @@ public void mp3FilesInit() {
   close(fd);
 }
 
-// n 番目ファイル名を返す（1<=n && n<=5）
+// n 番目ファイル名を返す（1<=n && n<=MAX_FILE）
 public char[] mp3FilesGetName(int n) {
   if (1<=n && n<=numFile) {
     return fnames[n-1];
@@ -73,10 +85,40 @@ public char[] mp3FilesGetName(int n) {
   return null;
 }
 
-// n 番目パス名を返す（1<=n && n<=5）
+// n 番目パス名を返す（1<=n && n<=MAX_FILE）
 public char[] mp3FilesGetPath(int n) {
   if (1<=n && n<=numFile) {
     return fnameToPath(fnames[n-1]);
   }
   return null;
+}
+
+
+// MP3フォルダ内にあるファイルの総数を返す（最大30ファイルまで対応）
+public int mp3FilesGetTotalNum() {
+  return numFile;
+}
+
+// playList からファイル名の一覧を受け取ってfnamesにいれる．
+// mp3FilesGetPath を使えば再生できる！
+public void mp3FilesSetToFnames(char[][] playListSongs) {
+
+  for (int s = 0; s < MAX_FILE; s = s + 1) {      // fnames の初期化
+    fnames[s][0] = '\0'; 
+  }
+
+  int i = 0;
+  while (i < MAX_FILE && playListSongs[i][0] != '\0' && playListSongs[i][0] != '+') {
+    strCpy(fnames[i], playListSongs[i]);
+    i = i + 1;
+  }
+  numFile = i;
+}
+
+//--------------------!!CAUTION!!----------------------
+// mp3FilesSetToFnames で fnames を上書きしていないか確認！
+//--------------------!!CAUTION!!----------------------
+// playList の曲追加用に fnames を返却する．
+public char[][] mp3FilesGetAllName() {
+  return fnames;
 }

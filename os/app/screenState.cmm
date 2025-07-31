@@ -1,0 +1,87 @@
+#include <util.hmm>
+
+int currentState = 0;
+ 
+// 各画面のタイトル
+char[][] screenTitles = {
+    "HOME",
+    "MUSIC SELECT",
+    "",
+    "OPTION",
+    "VOLUME",
+    "CONTRAST",
+    "PLAYLIST",
+    "PLAYLIST SONGS",
+    "ADD SONGS",
+    "DELETE SONGS",
+    "SORT SONGS",
+    "CHOOSE INS PLACE",
+    "   MP3 PLAYER",
+    "",
+    "SLEEP TIME"
+};
+
+// 各画面のメニュー項目（stateごとにメニューの文字列配列を持つ）
+char[][][] screenMenuItems = {
+    { "1: MUSIC", "2: PLAYLIST" },  // ホーム画面
+    { "", "", "", "", "", ""},  //曲選択画面
+    { "PLAY", "PAUSE", "NEXT", "PREV", "REPEAT", "SHUFFLE"},  //曲再生画面
+    { "VOLUME", "CONTRAST", "SLEEP TIME"},  //オプション画面
+    { "UP", "DOWN"},
+    { "UP", "DOWN"},
+    { "", "", "", "", "", ""}, //リスト表示画面
+    { "", "", "", "", "", ""}, //曲表示画面
+    { "", "", "", "", "", ""}, //曲表示画面
+    { "", "", "", "", "", ""},
+    { "", "", "", "", "", ""},
+    { "", "", "", "", "", ""},
+    { "", "", "", "", "", ""},
+    { "", "", "", "", "", ""},
+    { "UP", "DOWN"}
+};
+
+// 各画面のメニュー項目数
+//------------!!CAUTION!!--------------
+// 動的な項目数をもつ場合は「0」とすること！
+//------------!!CAUTION!!--------------
+int[] screenNumItems = {
+    2,
+    0, 
+    6,
+    3,
+    2,
+    2,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    6,
+    0,
+    2
+};
+
+// 各画面のタイトルを取得
+public char[] getScreenTitle(int state) {
+    return screenTitles[state];
+}
+
+// 各画面のメニューリストを取得
+public char[][] getScreenMenuItems(int state) {
+    return screenMenuItems[state];
+}
+
+// 各画面にメニューリストを入れる
+public void setScreenMenuItems(int state, char[][] items) {
+    screenMenuItems[state] = items;
+}
+
+// 各画面の項目数を取得
+public int getScreenNumItems(int state) {
+    return screenNumItems[state];
+}
+
+public void setScreenTitle(int state, char[] title) {
+    screenTitles[state] = title;
+}
