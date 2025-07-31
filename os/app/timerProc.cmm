@@ -33,7 +33,6 @@
 #include "appUtil.hmm"
 #include "spi.hmm"
 #include "lcd.hmm"
-#include "screenState.hmm"
 #include "mp3Proc.hmm"
 
 // メッセージ
