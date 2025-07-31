@@ -744,7 +744,7 @@ public void shellMain() {
           char[] path = mp3FilesGetPath(music_idx);  // 曲パス取得
           if (path != null) {
             stop();
-            timerStop()
+            timerStop();
             lastShownSec = -1;
             strCpy(nowpath,path);
             play(path);
