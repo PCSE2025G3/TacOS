@@ -36,6 +36,7 @@ char[][] sortSongs = array(99, 13);                  // プレイリスト内の
 
 char[][] fnames = array(10, 13);                     // 12345678.123
 char[] addName = array(13);                          // 8.3 形式に従う
+char[] fname = array(13);
 
 char[] playlistDir = "/playlist";
 char[] path = array(18);                            // /playlist/12345678.123
@@ -57,7 +58,21 @@ char[] fnameToPath(char[] fname) {
 public void playListInit() {
   int fd;                                           // ファイルディスクリプタ
   if ((fd=open(playlistDir, READ_MODE))<0) {
-    panic("panic:can't open playList Dir");
+   mkDir(playlistDir);                              // なければつくるようにする．
+   for (int i = 1; i < 11; i = i + 1) {             // ファイルも作る
+    fname[0] = 'l';
+    fname[1] = 'i';
+    fname[2] = 's';
+    fname[3] = 't';
+    fname[4] = chr((i / 10) + 0x30);       // 十の位
+    fname[5] = chr((i % 10) + 0x30);       // 一の位
+    fname[6] = '.';
+    fname[7] = 't';
+    fname[8] = 'x';
+    fname[9] = 't';
+    fname[10] = '\0';
+    creat(fnameToPath(fname));
+   }
   }
   Dir dir;
   int i = 0;
