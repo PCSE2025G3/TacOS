@@ -128,7 +128,10 @@ public void initSettings() {
    creat(fnameToPath(fname));                       // フォルダがなければファイルがあるはずがないのでファイルも作る
    contrastLevel = 5;                               // 初期値を与える
    volumeLevel = 5;                                 // 初期値を与える
-   sleepTimeIdx = 1;                                  // 初期値は 30 秒にするのでインデクスは1
+   sleepTimeIdx = 1;                                // 初期値は 30 秒にするのでインデクスは1
+
+   // 設定を変更せずにリセットするとエラーになるのでここでファイルに書き込み動作を行う
+   writeSettingsData();
   } else {
     int fp = open(fnameToPath(fname), READ_MODE);   // 設定ファイルを読む
     if (fp < 0) {
