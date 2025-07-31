@@ -37,7 +37,6 @@
 #else
 #include <shellProc.hmm>
 #include <mp3Proc.hmm>
-#include <timerProc.hmm>
 #include <spi.hmm>
 #endif
 
@@ -58,11 +57,9 @@ int[] pmFds = array(P_FILE_MAX);                    // FDS領域(FSのユーザ�
 #else
 // 組み込みカーネルの場合
 MakePCB(shellMem);                                  // APPのPCBとスタック領域
-MakePCB(timerMem);
 MakePCB(mp3Mem);                                    // APPのPCBとスタック領域
 int[] shellFds = array(P_FILE_MAX);                 // FDS領域(FSのユーザだけ）
 int[] mp3Fds = array(P_FILE_MAX);                   // FDS領域(FSのユーザだけ）
-int[] timerFds = array(P_FILE_MAX);
 #endif
 
 // ----------------------------------------------------------------------------
@@ -93,10 +90,6 @@ public void regProc()  {
   // MP3 プレーヤのメインプロセス
   newProc(addrof(shellMain),2,0,EI|KERN,_AtoA(shellMem),shellFds);
   schProc(_AtoA(shellMem));
-
-  // 時間計測のメインプロセス
-  newProc(addrof(timerMain),2,0,EI|KERN,_AtoA(timerMem), timerFds);
-  schProc(_AtoA(timerMem));
 
   // MP3 データ転送プロセス
   newProc(addrof(mp3Main),3,0,EI|KERN,_AtoA(mp3Mem),mp3Fds);

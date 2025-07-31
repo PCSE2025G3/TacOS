@@ -1,8 +1,0 @@
-public void updateContrast(int cursor);
-public int getContrastLevel();
-public void updateVolume(int cursor);
-public int getVolumeLevel();
-public int getSleepTimeIdx();
-public void initSettings();
-public void updateSleepTimeIdx(int cursor);
-public void writeSettingsData();
