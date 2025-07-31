@@ -37,7 +37,6 @@
 // メッセージ
 #define STOP  1                             // 再生停止要求メッセージ
 #define START 2                             // 再生開始要求メッセージ
-int Playing = 0;                            // 停止中0，再生中1
 
 // レスポンス
 #define OK  0
@@ -54,14 +53,12 @@ boolean syncFlag = false;                   // クライアントが同期待ち
 // 音楽再生停止
 public void stop() {
   syncFlag = true;                          // データ転送プロセスをコマンド待にする
-  Playing = 0;
   sndrec(link, STOP, 0, 0, 0);              // 同期要求メッセージ
 }
 
 // 音楽再生
 public boolean play(char[] path) {
   syncFlag = true;                          // データ転送プロセスをコマンド待にする
-  Playing = 1;
   int r = sndrec(link, START,
                   _AtoI(path), 0, 0);       // 再生開始メッセージ
   return r==OK;                             // 成功なら true を返す
@@ -88,10 +85,6 @@ void trans(char[] path) {
   }
   spiFlushMp3();                            // デコーダLSIのバッファをクリアし
   close(fd);                                // ファイルをクローズ
-
-  if (syncFlag == false) {                  //通常終了した場合はPlaying=0
-    Playing = 0;
-  }
 }
 
 // mp3Main は，プロセスのメインルーチンとしてカーネルに登録しておく．
@@ -107,8 +100,4 @@ public void mp3Main() {
       trans(_ItoA(l.prm1));                 // ファイルからデータ転送
     }
   }
-}
-
-public int playing_status() {
-  return Playing;
 }

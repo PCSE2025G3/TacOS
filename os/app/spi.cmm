@@ -169,7 +169,7 @@ public void spiResetMp3() {
   writeMp3Reg(0x00, 0x0800);           // mode <- NEW mode
   writeMp3Reg(0x03, 0x30d4);           // clock adjust <- 25MHz
   sleep(1);
-  writeMp3Reg(0x0b, 0x6060);           // volume set to (-16dB, -16dB)
+  writeMp3Reg(0x0b, 0x2020);           // volume set to (-16dB, -16dB)
   sleep(1);
   semV(spiSem);
 }
