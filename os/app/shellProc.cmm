@@ -744,11 +744,11 @@ public void shellMain() {
           char[] path = mp3FilesGetPath(music_idx);  // 曲パス取得
           if (path != null) {
             stop();
+            timerStop()
             lastShownSec = -1;
             strCpy(nowpath,path);
             play(path);
             timerStart(TIMER_MODE_PLAYBACK);
-
             isPlayRequested = 1;
           }
         }
