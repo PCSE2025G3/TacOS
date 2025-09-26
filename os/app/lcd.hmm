@@ -31,3 +31,25 @@ public void putCh(char c);                 // カーソル位置に１文字表�
 public void putStr(char[] str);            // カーソル位置に文字列表示
 public void putDec(int val, int width);    // カーソル位置に10進数表示
 public void cls();                         // 画面のクリア
+public void showLevelBar(int level);
+public void showRepeatClear();
+public void showRepeatOne();
+public void showRepeatAll();
+public void showShuffleClear();
+public void showShuffleTrue();
+public void showAddSongs(int m, int n);
+public void showAddSongsClear(int m, int n);
+public void addIdxInit();
+public int getAddIdx(int m);
+public int[] getAllAddIdx();
+public void showDelSongs(int m, int n);
+public void showDelSongsClear(int m, int n);
+public void delIdxInit();
+public int getDelIdx(int m);
+public int[] getAllDelIdx();
+public void putChCrown(int i);
+public void showCrown(int m, int n);
+public void showTime(int n);
+public void initSleepCrown(int sd);
+public void putSleepClown();
+public void showSleepTime(int idx);

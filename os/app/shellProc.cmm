@@ -27,13 +27,21 @@
  * $Id$
  *
  */
-#include <kernel.hmm>
+#include <kernel.hmm> //使用するヘッダー宣言
 #include <util.hmm>
+#include "appUtil.hmm"
 #include "lcd.hmm"
 #include "mp3Proc.hmm"
 #include "spi.hmm"
 #include "mp3Files.hmm"
 #include "shellProc.hmm"
+#include "screenState.hmm"
+#include "mm.hmm"
+#include "option.hmm"
+#include "playList.hmm"
+#include "timerProc.hmm"
+#include <stdlib.hmm>
+
 
 //-----------------------------------------------------------------------------
 // スイッチの読み取り
@@ -47,8 +55,60 @@
 #define SW6 0x01
 #define SWS 0x3f                                    // スイッチのビット全部
 
+//------------------------------------------------------------------------------------------------------------------------------------------------
+//画面ごとの番号定義 
+// 0:ホーム　1：曲一覧　2：再生画面　3：オプション　4：音量調整　5：コントラスト調整　6.プレイリスト　7.プレイリストの登録曲表示　8.プレイリストの曲追加
+// 9:プレイリストの曲削除　10:プレイリストの曲順序入れ替え　11:insert 先の選択　12:オープニング画面　13：スリープ画面
+//------------------------------------------------------------------------------------------------------------------------------------------------
+#define HOME_STATE 0
+#define MUSIC_STATE 1
+#define MUSIC_INF 2
+#define OPTION_STATE 3
+#define VOLUME_STATE 4
+#define CONTRAST_STATE 5
+#define PLAYLIST_STATE 6
+#define PLAYLIST_SONGS 7
+#define PLAYLIST_ADDSONGS 8
+#define PLAYLIST_DELETESONGS 9
+#define PLAYLIST_SORTSONGS 10
+#define PLAYLIST_SORTFINDINSERT 11
+#define OPENING 12
+#define SLEEP_STATE 13
+#define SLEEP_OPTION_STATE 14
+//------------------------------------------------------------------------------------------------------------------------------------------------
+
+#define MAX_LIST 6
+#define NAME_LEN 16
+#define TIMER_MODE_SLEEP    1
+#define TIMER_MODE_PLAYBACK 2
+
+char[][] musicList;
+char[][] playList;
+char[][] playList_register;
+char[][] playList_add;
+char[][] playList_sort;
+char[] tmp = array(18);
+char[] nowpath = array(18);
+int[] prevcursor = array(15);                       // カーソル情報を保持する変数
+int[] prevupper = array(15);                        // 画面最上のインデクスを保持する変数
+int[] prevState = array(15);                        // 画面遷移の順番を保持する変数．
+int[] addSongsIdx = array(50);
+int[] delSongsIdx = array(50);
+
 int sw0 = 0x00;                                     // 前回の状態(デバウンス前)
-int sw1 = 0x00;                                     // 前回の状態(デバウンス後)
+int sw1 = 0x00;
+int isPlayRequested = 0;                            // PLAYが選ばれたら1、PAUSEなら0
+int repeatMode = 0;                                 //リピート管理変数
+int shuffleMode = 0;                                //シャッフル管理関数
+int [] shuffleList;                                 //シャッフルリスト
+int shuffleIndex = 0;                               //シャッフル再生中のインデックス
+int list_upper = 0;
+int listNum = 0;                                    // 選択されたプレイリスト番号の保持
+int elementNum = 0;                                 // 表示する要素数の保持
+int numItems = 0;
+int stateidx = 0;                                   // 画面遷移のインデクスを保持するための変数
+int seed = 0;
+int[] time = {10,30,60,180,300,-1};                 // 無操作状態でスリープ状態に遷移するまでの時間（単位：s）
 
 int readSw() {
   int sw = ~in(0x18) & SWS;                         // スイッチを読み正論理に変換
@@ -76,28 +136,308 @@ int swToNum(int sw) {
   }
   return num;
 }
-      
-//-----------------------------------------------------------------------------
-// 画面表示
-//-----------------------------------------------------------------------------
-void demoScreen() {
-  cls();                                            // LCDをクリアする
-  locateXY(0,0); putStr("MP3 Player demo");
-  for (int i=1; i<=5; i=i+1) {                      // スイッチ1〜5に付いて
-    locateXY(2,i+1);
-    putCh(chr(ord('0')+i));                         // スイッチの番号
-    putStr(":");
-    char[] fname = mp3FilesGetName(i);              // 対応するファイル名
-    if (fname!=null) putStr(fname);
-  }
-  locateXY(2,7);
-  putStr("6:stop");                                 // 6番のスイッチ
+
+//-----------------------------------------
+// プレイリスト追加する曲の"+"情報の保持
+//-----------------------------------------
+public void getAddIdxFromLcd() {
+  addSongsIdx = getAllAddIdx();
 }
 
-void asta(int y) {
-  demoScreen();
-  locateXY(0, y+1);
-  putCh('*');
+//-----------------------------------------
+// プレイリスト追加する曲の"-"情報の保持
+//-----------------------------------------
+public void getDelIdxFromLcd() {
+  delSongsIdx = getAllDelIdx();
+}
+
+//-----------------------------------------
+// 画面遷移の履歴を保存する
+//-----------------------------------------
+void saveChangeScreen(int state) {
+  stateidx = stateidx + 1;
+  prevState[stateidx] = state;
+}
+
+//-----------------------------------------
+// 画面遷移の履歴を削除する
+//-----------------------------------------
+void removeChangeScreen() {
+  prevState[stateidx] = -1;
+  stateidx = stateidx - 1;
+}
+
+
+//画面を表示する関数
+void showScreen(int state, int cursorPos) {
+    cls();
+    locateXY(0, 0);
+    putStr(getScreenTitle(state));
+
+    numItems = getScreenNumItems(state);
+    char[][] menuItems = getScreenMenuItems(state);
+
+    if (numItems == 0) {
+      numItems = elementNum;
+    }
+
+    for (int i = 0; i < numItems; i=i+1) {
+        locateXY(1, i + 1);
+
+        if (i == cursorPos) {
+            putStr("-> ");
+        } else {
+            putStr("   ");
+        }
+
+        putStr(menuItems[i]);
+    }
+    if (state == CONTRAST_STATE) {
+      showLevelBar(getContrastLevel());
+    }
+    else if (state == VOLUME_STATE) {
+      showLevelBar(getVolumeLevel());
+    }
+    else if (state == SLEEP_OPTION_STATE) {
+      showSleepTime(getSleepTimeIdx());
+    }
+    else if (state == MUSIC_INF) {
+      if (repeatMode == 1) {
+        showRepeatOne();
+      } else if (repeatMode == 2) {
+        showRepeatAll();
+      } else if (shuffleMode == 1) {
+        showShuffleTrue();
+      }
+      if (getTimerMode() == TIMER_MODE_PLAYBACK && strCmp(nowpath, tmp) == 0) {
+        showTime(getTimerSec());
+      }
+    }
+    else if (state == PLAYLIST_ADDSONGS) {
+      getAddIdxFromLcd();
+      for (int i = 0; i < 6; i = i + 1) {  // 最大表示行
+        int idx = i + list_upper + 1;
+        if (idx >= 1 && idx <= playListAddSongsNum()) {
+          if (addSongsIdx[idx-1] == 1) {
+            locateXY(3, i + 1);  // (x=3, y=i+1)
+            putStr("+");
+          }
+        }
+      }
+    }
+    else if (state == PLAYLIST_DELETESONGS) {
+      getDelIdxFromLcd();
+      for (int i = 0; i < 6; i = i + 1) {  // 最大表示行
+        int idx = i + list_upper + 1;
+        if (idx >= 1 && idx <= playListSongsGetNum(listNum)) {
+          if (delSongsIdx[idx-1] == 1) {
+            locateXY(3, i + 1);  // (x=3, y=i+1)
+            putStr("-");
+          }
+        }
+      }
+    }
+    else if (state == HOME_STATE) {
+      showCrown(6,4);
+    }
+  }
+
+//-----------------------------------------
+//曲一覧用のメモリ確保
+//-----------------------------------------
+void malloc_musiclist(int upper_idx){
+  musicList = malloc(MAX_LIST * 4);
+    int i = 0;
+    elementNum = 0;
+    while (i < MAX_LIST) {
+      musicList[i] = malloc(NAME_LEN);
+      char[] fname = mp3FilesGetName(i + upper_idx + 1);
+      if (fname != null) {
+        strCpy(musicList[i], fname);
+        elementNum = elementNum + 1;
+      } else {
+        musicList[i][0] = '\0';
+      }
+      i = i + 1;
+    }
+}
+
+//-----------------------------------------
+//曲一覧用のメモリ解放
+//-----------------------------------------
+void free_musiclist(){
+  int i = 0;
+    while (i < MAX_LIST) {
+      free(musicList[i]);
+      i = i + 1;
+    }
+    free(musicList);
+}
+
+//-----------------------------------------
+//プレイリスト(list01~10)一覧用のメモリ確保
+//-----------------------------------------
+void malloc_playlist(int upper_idx){
+  playList = malloc(MAX_LIST * 4);
+    int i = 0;
+    elementNum = 0;
+    while (i < MAX_LIST) {
+      playList[i] = malloc(NAME_LEN);
+      char[] fname = playListGetName(i + upper_idx + 1);
+      if (fname != null) {
+        strCpy(playList[i], fname);
+        elementNum = elementNum + 1;
+      } else {
+        playList[i][0] = '\0';
+      }
+      i = i + 1;
+    }
+}
+
+//-----------------------------------------
+//プレイリスト(list01~list10)一覧用のメモリ解放
+//-----------------------------------------
+void free_playlist(){
+  int i = 0;
+    while (i < MAX_LIST) {
+      free(playList[i]);
+      i = i + 1;
+    }
+    free(playList);
+}
+
+//-----------------------------------------
+//プレイリスト登録曲のメモリ確保
+//-----------------------------------------
+void malloc_playlist_register(int list_idx, int upper_idx){
+  playList_register = malloc(MAX_LIST * 4);
+    int i = 0;
+    elementNum = 0;
+    while (i < MAX_LIST) {
+      playList_register[i] = malloc(NAME_LEN);
+      char[] fname = playListSongsGetName(list_idx, upper_idx + i + 1);
+      if (fname != null) {
+        strCpy(playList_register[i], fname);
+        elementNum = elementNum + 1;
+      } else {
+        playList_register[i][0] = '\0';
+      }
+      i = i + 1;
+    }
+}
+
+//-----------------------------------------
+//プレイリスト登録曲のメモリ解放
+//-----------------------------------------
+void free_playlist_register(){
+  int i = 0;
+    while (i < MAX_LIST) {
+      free(playList_register[i]);
+      i = i + 1;
+    }
+    free(playList_register);
+}
+
+//-----------------------------------------
+//プレイリストに追加可能な曲一覧のメモリ確保
+//-----------------------------------------
+void malloc_playlist_add(int list_idx){
+  playList_add = malloc(MAX_LIST * 4);
+    int i = 0;
+    elementNum = 0;
+    while (i < MAX_LIST) {
+      playList_add[i] = malloc(NAME_LEN);
+      char[] fname = playListAddSongsGetName(list_idx + i + 1);
+      if (fname != null) {
+        strCpy(playList_add[i], fname);
+        elementNum = elementNum + 1;
+      } else {
+        playList_add[i][0] = '\0';
+      }
+      i = i + 1;
+    }
+}
+
+//-----------------------------------------
+//プレイリストに追加可能な曲一覧のメモリ解放
+//-----------------------------------------
+void free_playlist_add(){
+  int i = 0;
+    while (i < MAX_LIST) {
+      free(playList_add[i]);
+      i = i + 1;
+    }
+    free(playList_add);
+}
+
+//-----------------------------------------
+//プレイリストの曲ソート用のメモリ確保
+//-----------------------------------------
+void malloc_playlist_sort(int upper_idx){
+  playList_sort = malloc(MAX_LIST * 4);
+    int i = 0;
+    elementNum = 0;
+    while (i < MAX_LIST) {
+      playList_sort[i] = malloc(NAME_LEN);
+      char[] fname = playListSortSongsGetName(upper_idx + i + 1);
+      if (fname != null) {
+        strCpy(playList_sort[i], fname);
+        elementNum = elementNum + 1;
+      } else {
+        playList_sort[i][0] = '\0';
+      }
+      i = i + 1;
+    }
+}
+
+//-----------------------------------------
+//プレイリストの曲ソート用のメモリ解放
+//-----------------------------------------
+void free_playlist_sort(){
+  int i = 0;
+    while (i < MAX_LIST) {
+      free(playList_sort[i]);
+      i = i + 1;
+    }
+    free(playList_sort);
+}
+
+
+//-----------------------------------------
+//シャッフルリスト
+//-----------------------------------------
+void generateshuffleList(int total, int currentMusicIdx) {
+  srand(seed);
+  shuffleList = malloc(total * 2);
+  for (int i = 0; i < total; i = i + 1) {
+    shuffleList[i] = i + 1;
+  }
+  for (int i = 0; i < total - 1; i = i + 1) {
+    int j = rand() % (total - i);
+    int tmp = shuffleList[i];
+    shuffleList[i] = shuffleList[i + j];
+    shuffleList[i + j] = tmp;
+  }
+
+  for (int i = 0; i < total; i = i + 1) {
+    if (shuffleList[i] == currentMusicIdx) {
+      int tmp = shuffleList[0];
+      shuffleList[0] = shuffleList[i];
+      shuffleList[i] = tmp;
+      break;
+    }
+  }
+  shuffleIndex = 1;
+}
+
+//-----------------------------------------
+//シャッフルリストのメモリ開放
+//-----------------------------------------
+void free_shuffleList() {
+  if (shuffleList != null) {
+    free(shuffleList);
+    shuffleList = null;
+  }
 }
 
 //-----------------------------------------------------------------------------
@@ -105,24 +445,799 @@ void asta(int y) {
 //-----------------------------------------------------------------------------
 // ここからプロセスの実行が始まる
 public void shellMain() {
-  spiResetLcd();                                    // sleepを使用するので
-  spiResetMp3();                                    //   プロセスが実行する
-  mp3FilesInit();                                   // ファイル一覧を作る
-  demoScreen();                                     // 画面を初期化
+  spiResetLcd();   // sleepを使用するので
+  cls();
+  spiResetMp3();   //   プロセスが実行する
+  mp3FilesInit();  // ファイル一覧を作る
+  playListInit();  // プレイリストの一覧を作る
+  initSettings();  // 設定データの読み込み
+  int sleeptime = time[getSleepTimeIdx()]; // スリープ状態に遷移するまでの時間の設定
+
+// ----------------------------------------------
+// オープニング画面の表示
+// ----------------------------------------------
+  int state = OPENING;
+  showScreen(state, -1);  // カーソルは表示しない
+  showCrown(6,2);            // 王冠の表示
+  locateXY(4,7);
+  putStr("Welcome!!");
+  sleep(2000);
+  play("/asset/opening.mp3");
+  sleep(3000);
+  for (int i = 0; i < 12; i = i + 1) {
+    if (i % 4 == 0) {
+      locateXY(4,7);
+      putStr("          ");
+      locateXY(4,7);
+      putStr("Loading");
+      sleep(600);
+    } else if (i % 4 == 1) {
+      locateXY(4,7);
+      putStr("          ");
+      locateXY(4,7);
+      putStr("Loading.");
+      sleep(600);
+    } else if (i % 4 == 2) {
+      locateXY(4,7);
+      putStr("          ");
+      locateXY(4,7);
+      putStr("Loading..");
+      sleep(600);
+    } else {
+      locateXY(4,7);
+      putStr("          ");
+      locateXY(4,7);
+      putStr("Loading...");
+      sleep(600);
+    }
+  }
+  sleep(3000);
+
+  state = HOME_STATE;
+  int cursorPos = 0;
+  int music_idx = 0;
+  int total = 0;
+  int idx = 0;
+  int status;
+  int lastShownSec = -1;
+  int sleepFrame = 0;
+  int silentFrames = 0;
+  boolean justWokeUpFromSleep = false;
+
+  showScreen(state, cursorPos); // 初期状態
+
+  //メインプロセスのループ
   for (;;) {
     int sw = readSw();
     int num = swToNum(sw);
-    if (num==6) {                                   // 6 番のスイッチが押された
-      dbgPutStr("stop\n");
-      demoScreen();                                 // 画面を初期化
-      stop();
-    } else if (num>0 && mp3FilesGetName(num)!=null) { // ファイルと対応するボタン
-      demoScreen();                                 // 画面を初期化
-      asta(num);                                    // 再生中の曲に印を表示
-      play(mp3FilesGetPath(num));                   // 再生開始
-      dbgPutStr(mp3FilesGetPath(num));
-      dbgPutStr("\n");
+    int filenum = mp3FilesGetTotalNum(); //MP3ファイルの総数
+
+    if(num!=-1) {
+      seed = seed + 1;
+      seed = seed % 1000;
     }
-    sleep(10);                                      // 10ms に一度
+
+    // スリープ画面からの復帰
+    if (num!=-1 && state == SLEEP_STATE) {
+      timerStop();
+      silentFrames = 0;
+      state = prevState[stateidx];      // 前の画面に戻るために履歴から state を呼び出す
+      removeChangeScreen();             // 前の画面の情報を消す
+      cursorPos = prevcursor[state];
+      list_upper = prevupper[state];
+      showScreen(state, cursorPos);
+      continue;
+    }
+
+    if (playing_status() == 0 && num == -1 && sleeptime > 0) {
+      silentFrames = silentFrames + 1;
+    } else if (playing_status() == 1 || num!=-1) {
+      // 曲が明らかに再生中なら silentFrames をリセット
+      silentFrames = 0;
+    }
+
+    // タイマーの開始・停止判定
+    if (silentFrames >= 300 && getTimerStatus() == 0) {
+      timerStart(TIMER_MODE_SLEEP);
+    } else if (silentFrames < 300 && getTimerStatus() == 1 && playing_status() == 0 && getTimerMode() != TIMER_MODE_PLAYBACK) {
+       timerStop();
+    }
+
+
+    if (getTimerSec() >= sleeptime && state != SLEEP_STATE && getTimerMode() == TIMER_MODE_SLEEP) {
+      saveChangeScreen(state);
+      state = SLEEP_STATE;
+      showScreen(SLEEP_STATE, -1);
+      initSleepCrown(seed);
+      putSleepClown();
+      sleepFrame = 0;
+    }
+    
+    if (state == SLEEP_STATE) {
+      sleepFrame = sleepFrame + 10;
+      if (sleepFrame >= 800) {
+        cls();
+        putSleepClown();
+        sleepFrame = 0;
+      }
+    }
+
+    if (state == MUSIC_INF  && getTimerMode() == TIMER_MODE_PLAYBACK && strCmp(nowpath,tmp) == 0) {
+      int now = getTimerSec();
+      if (now != lastShownSec) {
+        showScreen(MUSIC_INF, cursorPos);  // 秒が変わったら画面を更新
+        lastShownSec = now;
+      }
+    }
+
+    if (num == 1) {  // SW1 = 上
+      numItems = getScreenNumItems(state);
+      // ステートによってカーソルの範囲を指定する（静的，動的なものを仕分ける）
+      if (numItems == 0) {
+        numItems = elementNum;
+      }
+      // カーソルがまだ上に動かせる
+      if (cursorPos > 0) {
+        cursorPos = cursorPos - 1;
+      } else if (state == MUSIC_STATE) {
+        //曲選択画面で，かつ上端まで来たときの処理
+        if (cursorPos == 0 && list_upper > 0) {
+          list_upper = list_upper - 1;
+          free_musiclist();
+          malloc_musiclist(list_upper);
+          setScreenMenuItems(state, musicList);
+        }
+      } else if (state == PLAYLIST_STATE){
+        //プレイリスト画面で，かつ上端まで来たときの処理
+        if (cursorPos == 0 && list_upper > 0) {
+          list_upper = list_upper - 1;
+          free_playlist();
+          malloc_playlist(list_upper);
+          setScreenMenuItems(state, playList);
+        }
+      } else if (state == PLAYLIST_SONGS && playListSongsGetNum(listNum) > 6) {
+        //プレイリスト登録曲一覧画面で，かつカーソルが上端まできたときの処理
+        if (cursorPos == 0 && list_upper > 0) {
+          list_upper = list_upper - 1;
+          free_playlist_register();
+          malloc_playlist_register(listNum, list_upper);
+          setScreenMenuItems(state, playList_register);
+        }
+      } else if (state == PLAYLIST_ADDSONGS && playListAddSongsNum() > 6) {
+        //プレイリストの曲追加画面で，かつ上端まで来たときの処理
+        if (cursorPos == 0 && list_upper > 0) {
+          list_upper = list_upper - 1;
+          free_playlist_add();
+          malloc_playlist_add(list_upper);
+          setScreenMenuItems(state, playList_add);
+        }
+      } else if ((state == PLAYLIST_DELETESONGS || state == PLAYLIST_SORTSONGS) && numItems < playListSongsGetNum(listNum)) {
+        if (cursorPos == 0 && list_upper > 0) {
+          list_upper = list_upper - 1;
+          free_playlist_register();
+          malloc_playlist_register(listNum, list_upper);
+          setScreenMenuItems(state, playList_register);
+        } 
+      } else if (state == PLAYLIST_SORTFINDINSERT && playListSongsGetNum(listNum) > 2) {
+        if (cursorPos == 0 && list_upper > 0) {
+          list_upper = list_upper - 1;
+          free_playlist_sort();
+          malloc_playlist_sort(list_upper);
+          setScreenMenuItems(state, playList_sort);
+        }
+      } else {
+        // 項目数が6以下のとき：ループ処理
+        cursorPos = numItems - 1;
+        }
+        prevcursor[state] = cursorPos; //カーソル情報の保持
+        prevupper[state] = list_upper;
+        showScreen(state, cursorPos);
+    }
+    else if (num == 5) {  // SW5 = 下
+      numItems = getScreenNumItems(state);
+      // ステートによってカーソルの範囲を指定する（静的，動的なものを仕分ける）
+      if (numItems == 0) {
+        numItems = elementNum;
+      }
+      // カーソルがまだ下に動かせる
+      if (cursorPos + 1 < numItems) {
+        cursorPos = cursorPos + 1;
+      } else if (state == MUSIC_STATE) {
+        //曲選択画面で，かつ下端まで来たときの処理
+        if (cursorPos + list_upper < filenum - 1) {
+          list_upper = list_upper + 1;
+          free_musiclist();
+          malloc_musiclist(list_upper);
+          setScreenMenuItems(state, musicList);
+        }
+      } else if (state == PLAYLIST_STATE) {
+        //プレイリスト画面で，かつ下端まで来たときのスクロール処理
+        if (cursorPos + list_upper < 9) {
+          list_upper = list_upper + 1;
+          free_playlist();
+          malloc_playlist(list_upper);
+          setScreenMenuItems(state, playList);
+        }
+      } else if ((state == PLAYLIST_SONGS) && playListSongsGetNum(listNum) > 6 ) {
+        //プレイリストの曲一覧画面で，かつカーソルが下端まで来たときのスクロール処理
+        if (cursorPos + list_upper < playListSongsGetNum(listNum) - 1) {
+          list_upper = list_upper + 1;
+          free_playlist_register();
+          malloc_playlist_register(listNum, list_upper);
+          setScreenMenuItems(state, playList_register);
+        }
+      } else if (state == PLAYLIST_ADDSONGS && playListAddSongsNum() > 6) {
+        //曲追加画面で，かつカーソルが下端まで来たときのスクロール処理
+        if (cursorPos + list_upper < playListAddSongsNum() - 1) {
+          list_upper = list_upper + 1;
+          free_playlist_add();
+          malloc_playlist_add(list_upper);
+          setScreenMenuItems(state, playList_add);
+        }
+      } else if((state == PLAYLIST_DELETESONGS || state == PLAYLIST_SORTSONGS) && numItems < playListSongsGetNum(listNum)) { 
+        // PLAYLIST_DELETESONGS または PLAYLIST_SORTSONGS のときに要素数が7で，かつ list_upper!=0 の場合の挙動に対応
+        if (cursorPos + list_upper < playListSongsGetNum(listNum) - 1) {
+          list_upper = list_upper + 1;
+          free_playlist_register();
+          malloc_playlist_register(listNum, list_upper);
+          setScreenMenuItems(state, playList_register);
+        }
+      } else if (state == PLAYLIST_SORTFINDINSERT && playListSongsGetNum(listNum) > 2) {
+        if (cursorPos + list_upper < 2 * playListSongsGetNum(listNum) - 2 ) {
+          list_upper = list_upper + 1;
+          free_playlist_sort();
+          malloc_playlist_sort(list_upper);
+          setScreenMenuItems(state, playList_sort);
+        }
+      } else {
+        //下端→上端ループ
+        cursorPos = 0;
+        list_upper = 0;
+      }
+      prevcursor[state] = cursorPos;
+      prevupper[state] = list_upper;
+      showScreen(state, cursorPos);
+    }
+
+    else if (num == 3) { // SW3 = 決定
+      if (state == HOME_STATE) {
+        //musicを押した場合
+        if (cursorPos + 1 == 1) {
+          mp3FilesInit();                                         // playList で格納した fnames の影響を解消するため
+          malloc_musiclist(list_upper);
+          setScreenMenuItems(MUSIC_STATE, musicList);
+          saveChangeScreen(state);
+          state = MUSIC_STATE;
+          cursorPos = 0;
+          showScreen(state, cursorPos);
+        } else {
+          //PlayListを押した場合
+          cursorPos=0;
+          list_upper = 0;
+          saveChangeScreen(state);
+          state = PLAYLIST_STATE;
+          int numlist = getScreenNumItems(state);
+          malloc_playlist(list_upper);
+          setScreenMenuItems(state, playList);
+          showScreen(state, cursorPos);
+        }
+      }
+      else if (state == MUSIC_STATE) {
+        char[] selectedTitle = malloc(NAME_LEN);
+        music_idx = cursorPos + list_upper +1;
+        char[] fname = mp3FilesGetName(music_idx);
+        char[] path = mp3FilesGetPath(music_idx);  // 曲パス取得
+        
+        if (fname != null && path != null) {
+          strCpy(selectedTitle, fname);
+          strCpy(tmp,path);
+          setScreenTitle(MUSIC_INF, selectedTitle);
+          saveChangeScreen(state);
+          state = MUSIC_INF;
+
+          cursorPos = 0;
+          showScreen(state, cursorPos);
+        }
+      }
+      else if (state == MUSIC_INF) {
+        if (cursorPos == 0) {  // PLAY 選択  
+          char[] path = mp3FilesGetPath(music_idx);  // 曲パス取得
+          if (path != null) {
+            stop();
+            timerStop();
+            lastShownSec = -1;
+            strCpy(nowpath,path);
+            play(path);
+            timerStart(TIMER_MODE_PLAYBACK);
+            isPlayRequested = 1;
+          }
+        }
+        else if (cursorPos == 1) {  // PAUSE 選択
+          stop();
+          timerStop();
+          lastShownSec = -1;
+          isPlayRequested = 0;
+        }
+        else if (cursorPos == 2) { //NEXT選択時
+          status = playing_status();
+          stop();
+          timerStop();
+          lastShownSec = -1;
+          total = mp3FilesGetTotalNum();
+
+          if (shuffleMode == 1) { 
+            total = mp3FilesGetTotalNum();
+            if (shuffleIndex < total) {
+              music_idx = shuffleList[shuffleIndex];   // 次のシャッフル曲
+              shuffleIndex = shuffleIndex + 1;
+            } else {                                 // 列の終端
+              shuffleMode = 0;                       // 自然終了だけ解除
+              showShuffleClear();
+              free_shuffleList();
+              isPlayRequested = 0;
+              continue;
+            }
+          } else {
+            if (repeatMode != 1) {
+              music_idx = (music_idx % total) + 1;
+            }
+          }
+          char[] nextTitle = mp3FilesGetName(music_idx);
+          if (nextTitle != null) {
+            char[] path = mp3FilesGetPath(music_idx);
+            strCpy(tmp,path);
+            if (status == 1) {
+              timerStop();
+              lastShownSec = -1;
+              play(path);
+              strCpy(nowpath,path);
+              timerStart(TIMER_MODE_PLAYBACK);
+            }
+          }
+          setScreenTitle(MUSIC_INF, nextTitle);
+          showScreen(state, cursorPos);
+        }
+        else if (cursorPos == 3) {  // PREV 選択
+          status = playing_status();
+          stop();
+          timerStop();
+          lastShownSec = -1;
+          total = mp3FilesGetTotalNum();
+
+          if (shuffleMode == 1) {
+            if (shuffleIndex > 1) {
+              shuffleIndex = shuffleIndex - 1;                  // ひとつ前に戻す
+              music_idx = shuffleList[shuffleIndex - 1];        // その前の曲を再生
+            } else {
+              shuffleIndex = 1;                                 // 先頭固定（最初の曲）
+              music_idx = shuffleList[0];
+            }
+          }else {
+            if (repeatMode != 1){
+              music_idx = (music_idx + total - 2) % total + 1;
+            }
+          }
+          char[] prevTitle = mp3FilesGetName(music_idx);
+          if (prevTitle != null) {
+            char[] path = mp3FilesGetPath(music_idx);
+            strCpy(tmp,path);
+            if (status == 1) {
+              timerStop();
+              strCpy(nowpath,path);
+              lastShownSec = -1;
+              play(path);
+              timerStart(TIMER_MODE_PLAYBACK);
+            }
+          }
+          setScreenTitle(MUSIC_INF, prevTitle);
+          showScreen(state, cursorPos);
+        }
+        else if (cursorPos == 4) { //REPEAT選択
+          repeatMode = (repeatMode + 1) % 3;
+          showRepeatClear();
+
+          if (repeatMode > 0) { //リピート時シャッフルは無効化
+            shuffleMode = 0;
+            showShuffleClear();
+          }
+
+          if (repeatMode == 1) {
+            showRepeatOne();
+          }else if (repeatMode == 2) {
+            showRepeatAll();
+          }
+        }
+        else if (cursorPos == 5) { // SHUFLE 選択
+          if (shuffleMode == 0) {
+            shuffleMode = 1;
+            showShuffleTrue();
+            generateshuffleList(mp3FilesGetTotalNum(), music_idx);
+            shuffleIndex = 1;
+            repeatMode = 0; //シャッフル時リピートは無効化
+            showRepeatClear();
+
+            //直後に今の曲が先頭に来ていたらスキップ
+            if (shuffleList[shuffleIndex] == music_idx) {
+              shuffleIndex = shuffleIndex + 1;  // 次の曲から再生
+            }
+          } else {
+            shuffleMode = 0;
+            showShuffleClear();
+            free_shuffleList();
+          }
+        }
+
+      }
+      else if (state == OPTION_STATE) {
+        if (cursorPos == 0) {  // VOLUME
+          state = VOLUME_STATE;
+          cursorPos = 0;
+          showScreen(state, cursorPos);
+        }
+        else if (cursorPos == 1) {  // CONTRAST
+          state = CONTRAST_STATE;
+          cursorPos = 0;
+          showScreen(state, cursorPos);
+        }
+        else if (cursorPos == 2) {  // スリープまでの時間設定
+          state = SLEEP_OPTION_STATE;
+          cursorPos = 0;
+          showScreen(state, cursorPos);
+        }
+      }
+      else if (state == VOLUME_STATE) {
+        if (cursorPos == 0) {
+          updateVolume(cursorPos);
+          showScreen(state, cursorPos);
+        } else if (cursorPos == 1) {
+          updateVolume(cursorPos);
+          showScreen(state, cursorPos);
+        }
+      }
+      else if (state == CONTRAST_STATE) {
+        if (cursorPos == 0) {  // UP
+          updateContrast(cursorPos);
+          showScreen(state, cursorPos);
+        } else if (cursorPos == 1) {  // DOWN
+          updateContrast(cursorPos);
+          showScreen(state, cursorPos);
+        }
+      }
+      else if (state == SLEEP_OPTION_STATE) {
+        if (cursorPos == 0) {
+          updateSleepTimeIdx(cursorPos);
+          showScreen(state, cursorPos);
+        } else if (cursorPos == 1) {
+          updateSleepTimeIdx(cursorPos);
+          showScreen(state, cursorPos);
+        }
+      }
+      else if (state == PLAYLIST_STATE) {
+        mp3FilesInit();                                       // 戻るボタンを押したときに発生するバグの解消
+        listNum = cursorPos +  list_upper + 1;
+        showPlayListSongs(listNum, true);
+        list_upper = 0;
+        malloc_playlist_register(listNum, list_upper);
+        saveChangeScreen(state);
+        state = PLAYLIST_SONGS;
+        setScreenMenuItems(state, playList_register);
+        cursorPos = 0;
+        showScreen(state, cursorPos);
+      }
+      else if (state == PLAYLIST_SONGS) {
+        char[] fname = playListSongsGetName(listNum, cursorPos + list_upper + 1);
+        if (fname != null && strCmp(fname, "+") == 0) {
+          // いまのカーソル位置（cursorPos + list_upper）が "+"なら曲を追加する
+          mp3FilesInit();                                       
+          playListAddSongs(listNum); // 追加可能な曲のリストを作成する
+          list_upper = 0;
+          malloc_playlist_add(list_upper);
+          saveChangeScreen(state);
+          state = PLAYLIST_ADDSONGS;
+          setScreenMenuItems(state, playList_add);
+          cursorPos = 0;
+          addIdxInit();
+          showScreen(state, cursorPos);
+        }
+        else {
+          // 選択された曲を再生する
+          mp3FilesSetToFnames(playListSongsNametoMp3Files()); //mp3Files の fnames にプレイリストの曲を格納する
+          char[] selectedTitle = malloc(NAME_LEN);
+          music_idx = cursorPos + list_upper + 1;
+          char[] path = mp3FilesGetPath(music_idx);  // 曲パス取得
+
+          if (fname != null && path != null) {
+            strCpy(selectedTitle, fname);
+            setScreenTitle(MUSIC_INF, selectedTitle);
+            saveChangeScreen(state);
+            strCpy(tmp,path);
+            state = MUSIC_INF;
+            list_upper = 0;
+            cursorPos = 0;
+            showScreen(state, cursorPos);
+          }
+        }
+      }
+      else if (state == PLAYLIST_ADDSONGS) {
+        idx = cursorPos + list_upper + 1;
+        if (getAddIdx(idx) == 0) {
+          showAddSongs(cursorPos, idx);
+        } else {
+          showAddSongsClear(cursorPos, idx);
+        }
+      }
+      else if (state == PLAYLIST_DELETESONGS && playListSongsGetNum(listNum) != 0) { // 登録曲がないときは何も行わない
+        idx = cursorPos + list_upper + 1;
+        if (getDelIdx(idx) == 0) {
+          showDelSongs(cursorPos, idx);
+        } else {
+          showDelSongsClear(cursorPos, idx);
+        }
+      }
+      else if (state == PLAYLIST_SORTSONGS && playListSongsGetNum(listNum) > 1) {   // 登録曲が1曲のときは並び順変更を行わない
+        idx = cursorPos + list_upper + 1;
+        cursorPos = 0;
+        list_upper = 0;
+        state = PLAYLIST_SORTFINDINSERT;
+        playListSortSongs(listNum, idx);
+        free_playlist_register();
+        malloc_playlist_sort(list_upper);
+        setScreenMenuItems(state, playList_sort);
+        showScreen(state, cursorPos);
+      }
+      else if (state == PLAYLIST_SORTFINDINSERT &&  (strCmp(playListSortSongsGetName(cursorPos + list_upper + 1), "  * Ins *  ") == 0 || strCmp(playListSortSongsGetName(cursorPos + list_upper + 1), " ** Now ** ") == 0)) {
+        idx = cursorPos + list_upper + 1;
+        free_playlist_sort();
+        playListSortSongsInsert(listNum, idx);
+        cursorPos = 0;
+        list_upper = 0;
+        state = PLAYLIST_SORTSONGS;
+        showPlayListSongs(listNum, false);
+        malloc_playlist_register(listNum, list_upper);
+        setScreenMenuItems(state, playList_register);
+        showScreen(state, cursorPos);
+      }
+    }
+
+    else if (num == 2) { // SW2 = 戻る
+      if (state == MUSIC_STATE) {
+        free_musiclist();
+        state = HOME_STATE;
+        cursorPos = prevcursor[state];
+        list_upper = prevupper[state];
+        removeChangeScreen();
+        showScreen(state, cursorPos);
+      }
+      else if (state == MUSIC_INF) {
+        if (prevState[stateidx] == MUSIC_STATE) {
+          state = MUSIC_STATE;
+          cursorPos = prevcursor[state];
+          list_upper = prevupper[state];
+        } else {
+          state = PLAYLIST_SONGS;
+          cursorPos = prevcursor[state];
+          list_upper = prevupper[state];
+          mp3FilesInit();
+          showPlayListSongs(listNum, true);
+          free_playlist_register();
+          malloc_playlist_register(listNum, list_upper);
+          setScreenMenuItems(state, playList_register);
+        }
+        
+        removeChangeScreen();
+        showScreen(state, cursorPos);
+      }
+      else if (state == VOLUME_STATE) {
+        state = OPTION_STATE;
+        cursorPos = prevcursor[state];
+        list_upper = prevupper[state];
+        showScreen(state, cursorPos);
+      }
+      else if (state == CONTRAST_STATE) {
+        state = OPTION_STATE;
+        cursorPos = prevcursor[state];
+        list_upper = prevupper[state];
+        showScreen(state, cursorPos);
+      }
+      else if (state == SLEEP_OPTION_STATE){
+        state = OPTION_STATE;
+        cursorPos = prevcursor[state];
+        list_upper = prevupper[state];
+        sleeptime = time[getSleepTimeIdx()];  // スリープまでの時間更新
+        showScreen(state, cursorPos);
+      }
+      else if (state == PLAYLIST_STATE) {
+        free_playlist();
+        state = HOME_STATE;
+        cursorPos = prevcursor[state];
+        list_upper = prevupper[state];
+        removeChangeScreen();
+        showScreen(state, cursorPos);
+      }
+      else if (state == PLAYLIST_SONGS) {
+        free_playlist_register();
+        state = PLAYLIST_STATE;
+        cursorPos = prevcursor[state];
+        list_upper = prevupper[state];
+        removeChangeScreen();
+        malloc_playlist(list_upper);
+        showScreen(state, cursorPos);
+      }
+      else if (state == PLAYLIST_ADDSONGS) {
+        playListRegisterSongs(listNum, addSongsIdx);
+        free_playlist_add();
+        state = PLAYLIST_SONGS;
+        cursorPos = prevcursor[state];
+        list_upper = prevupper[state];
+        free_playlist_register();
+        showPlayListSongs(listNum, true);
+        malloc_playlist_register(listNum, list_upper); // プレイリスト追加の変更反映
+        removeChangeScreen();
+        setScreenMenuItems(state, playList_register);
+        showScreen(state, cursorPos);
+      }
+      else if (state == PLAYLIST_DELETESONGS) {
+        playListDeleteSongs(listNum, delSongsIdx);
+        free_playlist_register();
+        state = PLAYLIST_STATE;
+        cursorPos = prevcursor[state];
+        list_upper = prevupper[state];
+        malloc_playlist(list_upper);
+        removeChangeScreen();
+        setScreenMenuItems(state, playList);
+        showScreen(state, cursorPos);
+      }
+      else if (state == PLAYLIST_SORTSONGS) {
+        free_playlist_register();
+        state = PLAYLIST_STATE;
+        cursorPos = prevcursor[state];
+        list_upper = prevupper[state];
+        showPlayListSongs(listNum, true);
+        malloc_playlist(list_upper);
+        removeChangeScreen();
+        setScreenMenuItems(state, playList);
+        showScreen(state, cursorPos);
+      }
+      else if (state == PLAYLIST_SORTFINDINSERT) {
+        free_playlist_sort();
+        state = PLAYLIST_SORTSONGS;
+        cursorPos = prevcursor[state];
+        list_upper = prevupper[state];
+        showPlayListSongs(listNum, false);
+        malloc_playlist_register(listNum, list_upper);
+        removeChangeScreen();
+        setScreenMenuItems(state, playList_register);
+        showScreen(state, cursorPos);
+      }
+    }
+    else if (num == 4) { // SW4 = プレイリストの編集モード
+      if (state == PLAYLIST_SONGS) {
+        delIdxInit();
+        saveChangeScreen(state);
+        state = PLAYLIST_DELETESONGS;
+        showPlayListSongs(listNum, false);        // "+" を表示させない
+        free_playlist_register();
+        removeChangeScreen();
+        malloc_playlist_register(listNum, list_upper);
+        if (cursorPos + list_upper >= playListSongsGetNum(listNum)) {
+          cursorPos = cursorPos - 1;
+        }
+        setScreenMenuItems(state, playList_register);
+        showScreen(state, cursorPos);
+      } else if (state == PLAYLIST_DELETESONGS) {
+        saveChangeScreen(state);
+        state = PLAYLIST_SORTSONGS;
+        showPlayListSongs(listNum, false);       // "+" を表示させない
+        free_playlist_register();
+        removeChangeScreen();
+        malloc_playlist_register(listNum, list_upper);
+        if (cursorPos + list_upper >= playListSongsGetNum(listNum)) {
+          cursorPos = cursorPos - 1;
+        }
+        setScreenMenuItems(state, playList_register);
+        showScreen(state, cursorPos);
+      } else if (state == PLAYLIST_SORTSONGS) {
+        saveChangeScreen(state);
+        state = PLAYLIST_SONGS;
+        showPlayListSongs(listNum, true);       // PLAYLIST_SONGS に遷移するときは "+" を表示させる
+        free_playlist_register();
+        removeChangeScreen();
+        if (numItems == 0) {
+          cursorPos = 0;
+        }
+        malloc_playlist_register(listNum, list_upper);
+        setScreenMenuItems(state, playList_register);
+        showScreen(state, cursorPos);
+      }
+    }
+    else if (num == 6) { // SW6 = OPTION 画面の出入り
+      if (state == VOLUME_STATE || state == CONTRAST_STATE || state == OPTION_STATE || state == SLEEP_OPTION_STATE) {
+        state = prevState[stateidx];      // 前の画面に戻るために履歴から state を呼び出す
+        removeChangeScreen();             // 前の画面の情報を消す
+        cursorPos = prevcursor[state];
+        list_upper = prevupper[state];
+        sleeptime = time[getSleepTimeIdx()]; // sleep時間変更画面から直接戻った場合の変更を反映する．
+        writeSettingsData();              // 設定データのファイルへの書き込み
+        showScreen(state, cursorPos);
+      } else { //OPTION画面に入る．
+        saveChangeScreen(state);         // option 前の画面情報を保持する
+        state = OPTION_STATE;
+        cursorPos = 0;
+        showScreen(state, cursorPos);
+      }
+    }
+
+    if (playing_status() == 0 && isPlayRequested == 1) { //リピートとシャッフル再生
+      if (shuffleMode == 1) { //シャッフル再生
+        total = mp3FilesGetTotalNum();
+        if (shuffleIndex < total) {
+          music_idx = shuffleList[shuffleIndex];
+          shuffleIndex = shuffleIndex + 1;
+          char[] title = mp3FilesGetName(music_idx);
+          char[] title_path = mp3FilesGetPath(music_idx);
+          strCpy(tmp, title_path);
+          if (title != null) {
+            setScreenTitle(MUSIC_INF, title);
+            showScreen(state, cursorPos);
+            char[] path = mp3FilesGetPath(music_idx);
+            strCpy(nowpath,path);
+            timerStop();
+            lastShownSec = -1;
+            play(path);
+            timerStart(TIMER_MODE_PLAYBACK);
+            isPlayRequested = 1;
+          }
+        } else {  //再生する曲がなくなったら
+          shuffleMode = 0;
+          isPlayRequested = 0;
+          showShuffleClear();
+          free_shuffleList();
+        }
+      } else {
+        if (repeatMode == 0) { //通常再生
+          total = mp3FilesGetTotalNum();
+          if (music_idx >= total) {
+            isPlayRequested = 0;
+          } else {
+            timerStop();    // 前の曲のタイマーを止める
+            lastShownSec = -1;
+            music_idx = (music_idx % total) + 1;
+            char[] nextTitle = mp3FilesGetName(music_idx);
+            char[] title_path = mp3FilesGetPath(music_idx);
+            strCpy(tmp, title_path);
+            if (nextTitle != null) {
+              setScreenTitle(MUSIC_INF, nextTitle);
+              showScreen(state, cursorPos);
+              char[] path = mp3FilesGetPath(music_idx);
+              strCpy(nowpath,path);
+              play(path);
+              timerStart(TIMER_MODE_PLAYBACK);
+              isPlayRequested = 1;
+            }
+          }
+        }
+        else if (repeatMode == 1 || repeatMode == 2) {  //リピート再生
+          if (repeatMode == 2) {  //リピートALL
+            total = mp3FilesGetTotalNum();
+            music_idx = (music_idx % total) + 1;
+          }
+          char[] autoTitle = mp3FilesGetName(music_idx);
+          char[] title_path = mp3FilesGetPath(music_idx);
+          strCpy(tmp, title_path);
+          if (autoTitle != null) {
+            setScreenTitle(MUSIC_INF, autoTitle);
+            showScreen(state, cursorPos);
+            char[] path = mp3FilesGetPath(music_idx);
+            strCpy(nowpath,path);
+            timerStop();
+            lastShownSec = -1;
+            play(path);
+            timerStart(TIMER_MODE_PLAYBACK);
+            isPlayRequested = 1;
+          }
+        }
+      }
+    }
+    sleep(10);  // 負荷軽減，10ms待つ
   }
 }

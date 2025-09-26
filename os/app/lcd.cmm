@@ -34,11 +34,33 @@
 #include "spi.hmm"
 #include "font.hmm"
 #include "lcd.hmm"
+#include <stdlib.hmm>
+
+#define MAX_FILE 50
+int[] addIdx = array(MAX_FILE); // 追加曲用のidx
+int[] delIdx = array(MAX_FILE); // 削除曲用のidx
+char[] chm = array(3);
+char[] chs = array(3);
 
 char[] locateCom = { '\xb0',   // page address
                      '\x10',   // column address Hi = 0x00
                      '\x00',   // column address Lo = 0x00
                      '\xff' }; // EOF
+
+char[][] time = {   // スリープまでの時間の表示用
+  "  10",
+  "  30",
+  "  60",
+  " 180",
+  " 300",
+  "None"
+};
+
+int locateX;
+int locateY;
+int dx;
+int dy;
+boolean newClown = true;
 
 // 液晶上でカーソルを(x,y)に移動
 public void locateXY(int x, int y) {
@@ -52,6 +74,11 @@ public void locateXY(int x, int y) {
 // カーソル位置に１文字表示
 public void putCh(char c) {
   spiWriteLcdDat(font(c), 8);
+}
+
+// カーソル位置に1文字表示（王冠用）
+public void putChCrown(int i) {
+  spiWriteLcdDat(fontCrown(i), 8);
 }
 
 // カーソル位置に文字列表示
@@ -88,5 +115,200 @@ public void cls() {
     for (int j=0; j<16; j=j+1) {
       putCh(' ');
     }
+  }
+}
+
+public void showLevelBar(int level) {  //レベルバーを表示する関数
+  if (level < 1) level = 1;
+  if (level > 10) level = 10;
+
+  locateXY(2, 4);
+  putStr("[");
+
+  for (int i = 1; i <= 10; i = i + 1) {
+    if (i <= level) {
+      putStr("*");
+    } else {
+      putStr("-");
+    }
+  }
+  putStr("]");
+}
+
+public void showRepeatClear() {
+  locateXY(11,5);
+  putStr("     ");
+}
+
+public void showRepeatOne() {
+  locateXY(11,5);
+  putStr(">1");
+}
+
+public void showRepeatAll() {
+  locateXY(11,5);
+  putStr(">ALL");
+}
+
+public void showShuffleClear() {
+  locateXY(12,6);
+  putStr("   ");
+}
+
+public void showShuffleTrue() {
+  locateXY(12,6);
+  putStr("<->");
+}
+
+public void showAddSongs(int m, int n) {  // 第一引数　cursorPos, 第二引数 cursorPos + list_upper + 1
+  locateXY(3,m+1);
+  putStr("+");
+  addIdx[n-1] = 1;
+}
+
+public void showAddSongsClear(int m, int n) {
+  locateXY(3,m+1);
+  putStr(" ");
+  addIdx[n-1] = 0;
+}
+
+public void addIdxInit() {
+  for (int i = 0; i < MAX_FILE; i = i + 1) {
+    addIdx[i] = 0;
+  }
+}
+
+// m 番目の"+"選択状態を返す
+public int getAddIdx(int m) { // 引数 cursorPos + list_upper + 1
+  return addIdx[m-1];
+}
+
+public int[] getAllAddIdx() {
+  return addIdx;
+}
+
+public void showDelSongs(int m, int n) {
+  locateXY(3,m+1);
+  putStr("-");
+  delIdx[n-1] = 1;
+}
+
+public void showDelSongsClear(int m, int n) {
+  locateXY(3,m+1);
+  putStr(" ");
+  delIdx[n-1] = 0;
+}
+
+public void delIdxInit() {
+  for (int i = 0; i < MAX_FILE; i = i + 1) {
+    delIdx[i] = 0;
+  }
+}
+
+public int getDelIdx(int m) {
+  return delIdx[m-1];
+}
+
+public int[] getAllDelIdx() {
+  return delIdx;
+}
+
+public void showCrown(int m, int n) {
+  int idx = 0;
+  for (int i = 0; i < 4; i = i + 1) {
+    locateXY(m,n+i);
+    for (int j = 0; j < 4; j = j + 1) {
+      putChCrown(idx);
+      idx = idx + 1;
+    }
+  }
+}
+
+// 引数 n（単位はs）を受け取って画面に経過秒数を表示する
+public void showTime(int n) {
+  int m = n / 60;
+  int s = n % 60;
+
+  chm[0] = chr(0x30 + m / 10);
+  chm[1] = chr(0x30 + m % 10);
+  chs[0] = chr(0x30 + s / 10);
+  chs[1] = chr(0x30 + s % 10);
+
+  locateXY(10,1);
+  putCh(chm[0]);
+  putCh(chm[1]);
+  putCh(':');
+  putCh(chs[0]);
+  putCh(chs[1]);
+}
+
+void showOldCrown(int m, int n) {
+  int idx = 16;
+  for (int i = 0; i < 4; i = i + 1) {
+    locateXY(m,n+i);
+    for (int j = 0; j < 4; j = j + 1) {
+      putChCrown(idx);
+      idx = idx + 1;
+    }
+  }
+}
+
+
+// -----------------------------------------------
+// シード値を初期化して描画位置を乱数で決める．
+// -----------------------------------------------
+public void initSleepCrown(int sd) {
+  srand(sd);
+  locateX = rand() % 12 + 2;
+  locateY = rand() % 4 + 2;
+  dx = (rand() % 2) * 2 - 1;          // -1 か 1 にする
+  dy = (rand() % 2) * 2 - 1;          // -1 か 1 にする
+  newClown = true;                    // 最初の描画は13代目の王冠マーク
+}
+
+
+// スリープ画面で王冠マークを動かして，壁にあたったら反射させる
+// 王冠は 4*4 文字分なので，判定には注意しなければならない
+public void putSleepClown() {
+
+  if (newClown) {
+    showCrown(locateX + dx, locateY + dy);
+  } else {
+    showOldCrown(locateX + dx, locateY + dy);
+  }
+  
+  locateX = locateX + dx;
+  locateY = locateY + dy;
+
+  // X方向の壁衝突判定＋反転＋補正
+  if (locateX <= 0) {
+    locateX = 1;
+    dx = 1;
+    newClown = !newClown;
+  } else if (locateX >= 12) {
+    locateX = 11;
+    dx = -1;
+    newClown = !newClown;
+  }
+
+  // Y方向の壁衝突判定＋反転＋補正
+  if (locateY <= 0) {
+    locateY = 1;
+    dy = 1;
+    newClown = !newClown;
+  } else if (locateY >= 4) {
+    locateY = 3;
+    dy = -1;
+    newClown = !newClown;
+  }
+}
+
+public void showSleepTime(int idx) {
+
+  locateXY(5,4);
+  putStr(time[idx]);  // 設定秒数の表示
+
+  if (idx != 5) {
+    putStr(" sec");   // None でなければ，単位を表示させる．
   }
 }

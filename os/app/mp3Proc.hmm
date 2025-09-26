@@ -29,3 +29,5 @@
 public boolean play(char[] path);
 public void stop();
 public void mp3Main();
+public int mp3SciRead(int addr);
+public int playing_status();
